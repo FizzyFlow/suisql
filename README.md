@@ -1,6 +1,6 @@
 ## SuiSQL
 
-You don't need backend 
+You don't need backend anymore * (though SuiSQL may work on node.js side too)
 
 A fully SQL-compatible database that runs in the browser, storing data on the Sui blockchain and the Walrus protocol.
 
