@@ -11,7 +11,7 @@
     "dev": "vite --host",
     "docs": "npx typedoc --plugin typedoc-plugin-markdown src/*",
     "build": "rimraf build/**/* && tsc && vite build && dts-bundle-generator --config ./dts-bundle-generator.config.ts && copyfiles ./package.json build && copyfiles ./README.md build",
-    "test": "vitest",
+    "test": "vitest --testTimeout 10000",
     "test:coverage": "vitest --coverage",
     "lint:scripts": "eslint . --ext .ts",
     "lint:styles": "stylelint ./**/*.{css,scss}",

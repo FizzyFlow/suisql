@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compress, decompress } from "../includes/SuiSqlUtils";
+import { compress, decompress } from "../src/SuiSqlUtils";
 import crypto from 'crypto';
 
 describe("compress and back", () => {

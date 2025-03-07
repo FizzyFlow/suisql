@@ -7,14 +7,26 @@ describe("set up empty db", () => {
         const phrase = "coin coin coin coin coin coin coin coin coin coin coin coin";
         const suiMaster = new SuiMaster({client: 'local', phrase: phrase, debug: true});
         await suiMaster.initialize();
-        const dbId = '0x71c09db255106010eda41db8b1781d0e820fe566aeb87bcd1d44990acbc2a3de';
 
         const db = new SuiSql({
-                id: dbId,
+                name: 'new testdb',
                 suiClient: suiMaster.client,
                 signer: suiMaster.signer,
             });
-        await db.initialize();
+
+
+        const state = await db.initialize();
+
+        console.error('state', state);
+        console.error('state', state);
+        console.error('state', state);
+        console.error('state', state);
+        console.error('state', state);
+        console.error('state', state);
+        console.error('state', state);
+        console.error('state', state);
+        console.error('state', state);
+
 
         expect(db.sync.hasUnsavedChanges()).toBeFalsy();
 

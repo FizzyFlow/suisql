@@ -70,6 +70,7 @@ export default class SuiSqlStatement {
                 sql: this.sql,
                 at: this.executedAt,
             });
+            this.suiSql.markAsOk();
         }
 
         return stepResult;

@@ -8,6 +8,7 @@ import type { Signer } from '@mysten/sui/cryptography';
 
 type SuiSqlParams = {
     id?: string,
+    name?: string,
     suiClient?: SuiClient,
     signer?: Signer,
 };
@@ -22,6 +23,8 @@ enum State {
 export default class SuiSql {
 
     public id?: string;
+    public name?: string;
+
     private suiClient?: SuiClient;
     private signer?: Signer;
 
@@ -42,19 +45,22 @@ export default class SuiSql {
             if (params.id) {
                 this.id = params.id;
             }
-            if (params.suiClient) {
-                this.suiClient = params.suiClient;
+            if (params.name) {
+                this.name = params.name;
             }
             if (params.signer) {
                 this.signer = params.signer;
             }
-    
-            this.sync = new SuiSqlSync({
+            if (params.suiClient) {
+                this.suiClient = params.suiClient;
+                this.sync = new SuiSqlSync({
                     id: this.id,
+                    name: this.name,
                     suiClient: this.suiClient,
                     signer: this.signer,
                     suiSql: this,
                 });
+            }
         }
     }
 
@@ -76,19 +82,20 @@ export default class SuiSql {
         this.state = State.EMPTY;
         this._db = new this._SQL.Database();
 
-        // this._state = SuiSql.EMPTY;
-
-        // await this.run("CREATE TABLE test (col1, col2);");
-        // await this.run("CREATE TABLE test2 (col21, col22);");
-        // // // Insert two rows: (1,111) and (2,222)
-        // await this.run("INSERT INTO test VALUES (?,?), (?,?)", [1,111,2,222]);
-        // await this.run("INSERT INTO test VALUES (?,?), (?,?)", [1,111,2,222]);
-        // await this.run("INSERT INTO test2 VALUES (?,?), (?,?)", [3,111,4,222]);
-
-        // const data = this._db.export();
-        // console.log(data);
+        try {
+            if (this.sync) {
+                await this.sync.syncFromBlockchain();
+                // that would also update this.state to OK in case there is something synced from the chain
+            }
+        } catch (e) {
+            this.state = State.ERROR;
+        }
 
         return this.state;
+    }
+
+    markAsOk() {
+        this.state = State.OK;
     }
 
     /**
