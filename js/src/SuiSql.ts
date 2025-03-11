@@ -10,6 +10,7 @@ type SuiSqlParams = {
     id?: string,
     name?: string,
     suiClient?: SuiClient,
+    walrusSuiClient?: SuiClient,
     signer?: Signer,
 };
 
@@ -36,10 +37,6 @@ export default class SuiSql {
 
     constructor(params?: SuiSqlParams) {
         this._SQL = null;
-        // this._state = null;
-        // this._db = null;
-
-        // this._statements = [];
 
         if (params) {
             if (params.id) {
@@ -57,6 +54,7 @@ export default class SuiSql {
                     id: this.id,
                     name: this.name,
                     suiClient: this.suiClient,
+                    walrusSuiClient: params.walrusSuiClient,
                     signer: this.signer,
                     suiSql: this,
                 });
@@ -77,6 +75,10 @@ export default class SuiSql {
         return ret;
     }
 
+    replace(data: Uint8Array) {
+        this._db = new this._SQL.Database(data);
+    }
+
     async initialize() {
         this._SQL = await initSqlJs();
         this.state = State.EMPTY;
@@ -86,6 +88,8 @@ export default class SuiSql {
             if (this.sync) {
                 await this.sync.syncFromBlockchain();
                 // that would also update this.state to OK in case there is something synced from the chain
+
+                this.id = this.sync.id;
             }
         } catch (e) {
             this.state = State.ERROR;

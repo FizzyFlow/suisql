@@ -14,6 +14,7 @@ type SuiSqlSyncParams = {
     id?: string,
     name?: string,
     suiClient: SuiClient,
+    walrusSuiClient?: SuiClient,
     signer?: Signer,
 };
 
@@ -47,6 +48,7 @@ export default class SuiSqlSync {
         this.chain = new SuiSqlBlockchain({
                 signer: this.signer,
                 suiClient: this.suiClient,
+                walrusSuiClient: params.walrusSuiClient,
             });
     }
 
@@ -113,6 +115,12 @@ export default class SuiSqlSync {
 
         const id = (this.id as string);
         const fields = await this.chain.getFields(id);
+
+        if (fields.walrus) {
+            // console.error(fields.walrus);
+            await this.loadFromWalrus(fields.walrus);
+        }
+
         for (const patch of fields.patches) {
             await this.applyPatch(patch);
         }
@@ -120,16 +128,24 @@ export default class SuiSqlSync {
         await new Promise((res)=>setTimeout(res, 5)); // small delay to be sure syncedAt is in the past
     }
 
-    async syncToBlockchain() {
+    async syncToBlockchain(forceWalrus = false) {
         if (!this.id || !this.chain) {
             throw new Error('can not save db without blockchain id');
         }
 
         const syncedAtBackup = this.syncedAt;
-        const patch = await this.getPatch();
-        this.syncedAt = Date.now();
 
-        const success = await this.chain.savePatch(this.id, patch);
+        let success = false;
+        if (forceWalrus) {
+            const full = await this.getFull();
+            this.syncedAt = Date.now();
+            success = await this.chain.saveFull(this.id, full);
+        } else {
+            const patch = await this.getPatch();
+            this.syncedAt = Date.now();
+            success = await this.chain.savePatch(this.id, patch);
+        }
+
 
         if (success) {
             return true;
@@ -138,63 +154,14 @@ export default class SuiSqlSync {
 
             return false;
         }
+    }
 
-
-        // if (!this.id || !this.suiClient) {
-        //     throw new Error('can not sync if do not know id or have no suiClient');
-        // }
-        // if (!this.signer) {
-        //     throw new Error('can not sync to blockchain without signer');
-        // }
-
-        // const tx = new Transaction();
-        // const target = ''+this.packageId+'::suisql::patch';
-
-        // const syncedAtBackup = this.syncedAt;
-
-        // try {
-
-        //     const patch = await this.getPatch();
-        //     this.syncedAt = Date.now();
-    
-        //     const args = [
-        //         tx.object(this.id),
-        //         tx.pure(bcs.vector(bcs.u8()).serialize(patch)),
-        //     ];
-    
-        //     tx.moveCall({ 
-        //             target, 
-        //             arguments: args, 
-        //             typeArguments: [], 
-        //         });
-    
-        //     tx.setSenderIfNotSet(this.signer.toSuiAddress());
-        //     const transactionBytes = await tx.build({ client: this.suiClient });
-    
-        //     const result = await this.suiClient.signAndExecuteTransaction({ 
-        //             signer: this.signer, 
-        //             transaction: transactionBytes,
-        //         });
-    
-        //     if (result && result.digest) {
-        //         try {
-        //             await this.suiClient.waitForTransaction({
-        //                 digest: result.digest,
-        //             });
-    
-        //             return true;
-        //         } catch (_) {
-        //             this.syncedAt = syncedAtBackup;
-    
-        //             return false;
-        //         }
-        //     }
-
-        // } catch (e) {
-        //     this.syncedAt = syncedAtBackup;
-
-        //     return false;
-        // }
+    async loadFromWalrus(walrusBlobId: string) {
+        const data = await this.chain?.getFull(walrusBlobId);
+        console.error('loaded from walrus', data);
+        if (data) {
+            this.suiSql.replace(data);
+        }
     }
 
     async applyPatch(patch: Uint8Array) {

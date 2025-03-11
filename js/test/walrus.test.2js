@@ -1,0 +1,42 @@
+import { describe, expect, it } from "vitest";
+import { WalrusClient } from "../src/walrusSdk";
+import { SuiMaster } from 'suidouble';
+
+describe("WalrusClient", () => {
+    it("works", async () => {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+        const phrase = "off head person candy multiply trend doll affair sketch weekend girl produce";
+        // 0x50edd3b7a0f2c5b0093c541b9f28be1754a639f5ea8a7d45c9cd01563aae23b3
+        const suiMaster = new SuiMaster({client: 'testnet', phrase: phrase, debug: true});
+        await suiMaster.initialize();
+
+        const signer = suiMaster.signer;
+        const walrus = new WalrusClient({
+                network: 'testnet',
+                suiClient: suiMaster.client,
+                packageConfig: {
+                    packageId: '0x795ddbc26b8cfff2551f45e198b87fc19473f2df50f995376b924ac80e56f88b',
+                    latestPackageId: '0x261b2e46428a152570f9ac08972d67f7c12d62469ccd381a51774c1df7a829ca',
+                    systemObjectId: '0x98ebc47370603fe81d9e15491b2f1443d619d1dab720d586e429ed233e1255c1',
+                    stakingPoolId: '0x20266a17b4f1a216727f3eef5772f8d486a9e3b5e319af80a5b75809c035561d',
+                    walPackageId: '0x8190b041122eb492bf63cb464476bd68c6b7e570a4079645a8b28732b6197a82',
+                },
+            });
+
+        const file = new TextEncoder().encode('Hello frodasdasd!!!\n');
+
+        const { blobId } = await walrus.writeBlob({
+            blob: file,
+            deletable: true,
+            epochs: 3,
+            signer: signer,
+            owner: suiMaster.address,
+            attributes: null,
+        });
+
+        console.log(blobId);
+
+        
+    });
+});

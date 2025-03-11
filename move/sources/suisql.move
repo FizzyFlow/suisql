@@ -59,9 +59,9 @@ module suisql::suisql {
         vector::push_back(&mut db.patches, patch);
     }
 
-    public entry fun clamp_with_walrus(db: &mut SuiSqlDb, walrus: vector<u8>, ctx: &mut TxContext) {
+    public entry fun clamp_with_walrus(db: &mut SuiSqlDb, walrus: std::ascii::String, ctx: &mut TxContext) {
         db.patches = vector::empty();
-        db.walrus = std::ascii::string(walrus);
+        db.walrus = walrus;
     }
 
 }

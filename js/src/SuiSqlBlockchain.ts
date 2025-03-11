@@ -5,9 +5,13 @@ import { packages } from "./SuiSqlConsts";
 import { Transaction } from "@mysten/sui/transactions";
 import { bcs } from '@mysten/sui/bcs';
 
+import SuiSqlWalrus from './SuiSqlWalrus.js';
+
 type SuiSqlParams = {
     suiClient: SuiClient,
+    walrusSuiClient?: SuiClient,
     signer?: Signer,
+    network?: string,
 };
 
 export default class SuiSqlBlockchain {
@@ -17,11 +21,22 @@ export default class SuiSqlBlockchain {
     private forcedPackageId?: string;
     private bankId?: string;
 
+    private walrus?: SuiSqlWalrus;
+
     constructor(params: SuiSqlParams) {
         this.suiClient = params.suiClient;
         this.signer = params.signer;
 
+        if (params.network) {
+            this.network = params.network;
+        }
+
+        this.walrus = new SuiSqlWalrus({
+            suiClient: (params.walrusSuiClient ? params.walrusSuiClient : this.suiClient),
+            signer: this.signer,
+        })
     }
+
 
     setPackageId(packageId: string) {
         this.forcedPackageId = packageId;
@@ -68,7 +83,7 @@ export default class SuiSqlBlockchain {
     }
 
     async getFields(dbId: string) {
-        const packageId = await this.getPackageId();
+        // const packageId = await this.getPackageId();
 
         const result = await (this.suiClient as SuiClient).getObject({
             id: dbId, // normalized id
@@ -80,16 +95,72 @@ export default class SuiSqlBlockchain {
         });
 
         let patches = [];
+        let walrus = null;
         if (result?.data?.content) {
             const fields = (result.data.content as any).fields;
             if (fields && fields.id && fields.id.id) {
                 patches = fields.patches;
             }
+            if (fields && fields.walrus) {
+                walrus = fields.walrus;
+            }
         }
 
         return {
             patches,
+            walrus,
         };
+    }
+
+    async getFull(walrusBlobId: string) {
+        return await this.walrus?.read(walrusBlobId);
+    }
+
+    async saveFull(dbId: string, full: Uint8Array) {
+        const packageId = await this.getPackageId();
+
+        if (!packageId || !this.signer || !this.suiClient || !this.walrus) {
+            throw new Error('no packageId or no signer or no walrus');
+        }
+        
+        const blobId = await this.walrus.write(full);
+
+        if (!blobId) {
+            throw new Error('can not write blob to walrus');
+        }
+
+        const tx = new Transaction();
+        const target = ''+packageId+'::suisql::clamp_with_walrus';
+
+        const args = [
+            tx.object(dbId),
+            tx.pure(bcs.string().serialize(blobId)),
+        ];
+        tx.moveCall({ 
+                target, 
+                arguments: args, 
+                typeArguments: [], 
+            });
+
+        tx.setSenderIfNotSet(this.signer.toSuiAddress());
+        const transactionBytes = await tx.build({ client: this.suiClient });
+
+        const result = await this.suiClient.signAndExecuteTransaction({ 
+                signer: this.signer, 
+                transaction: transactionBytes,
+            });
+        if (result && result.digest) {
+            try {
+                await this.suiClient.waitForTransaction({
+                    digest: result.digest,
+                });
+
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+        return false;
     }
 
     async savePatch(dbId: string, patch: Uint8Array) {
@@ -168,7 +239,6 @@ export default class SuiSqlBlockchain {
         if (sims && sims.events && sims.events.length) {
             for (const event of sims.events) {
                 if (event && event.type && event.type.indexOf('RemindDBEvent') !== -1) {
-                    console.log(event);
                     foundDbId = (event.parsedJson as any).id;
                 }
             }
@@ -223,7 +293,6 @@ export default class SuiSqlBlockchain {
             if (finalResults && finalResults.events && finalResults.events.length) {
                 for (const event of finalResults.events) {
                     if (event && event.type && event.type.indexOf('NewDBEvent') !== -1) {
-                        console.log(event);
                         createdDbId = (event.parsedJson as any).id;
                     }
                 }
@@ -234,7 +303,6 @@ export default class SuiSqlBlockchain {
             throw new Error('can not submit transaction: '+result);
         }
 
-        console.log(createdDbId);
         return createdDbId;
     }
 }
