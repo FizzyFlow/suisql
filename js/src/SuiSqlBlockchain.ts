@@ -7,25 +7,48 @@ import { bcs } from '@mysten/sui/bcs';
 
 import SuiSqlWalrus from './SuiSqlWalrus.js';
 
-type SuiSqlParams = {
+import SuiSqlLog from './SuiSqlLog';
+
+/**
+ * Should accept Transaction as parameter and return executed transaction digest
+ */
+export type CustomSignAndExecuteTransactionFunction =
+  (tx: Transaction) => Promise<string>;
+
+type SuiSqlBlockchainParams = {
     suiClient: SuiClient,
     walrusSuiClient?: SuiClient,
     signer?: Signer,
     network?: string,
+    signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction,
+};
+
+export type SuiSqlOwnerType = {
+    AddressOwner?: string;
+    ObjectOwner?: string;
+    Shared?: any,
+    Immutable?: boolean,
 };
 
 export default class SuiSqlBlockchain {
     private suiClient?: SuiClient;
     private signer?: Signer;
+    private signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction;
+
     private network: string = 'local';
     private forcedPackageId?: string;
     private bankId?: string;
 
     private walrus?: SuiSqlWalrus;
 
-    constructor(params: SuiSqlParams) {
+    constructor(params: SuiSqlBlockchainParams) {
         this.suiClient = params.suiClient;
         this.signer = params.signer;
+
+
+        if (params.signAndExecuteTransaction) {
+            this.signAndExecuteTransaction = params.signAndExecuteTransaction;
+        }
 
         if (params.network) {
             this.network = params.network;
@@ -88,14 +111,19 @@ export default class SuiSqlBlockchain {
         const result = await (this.suiClient as SuiClient).getObject({
             id: dbId, // normalized id
             options: {
-              showType: true,
-              showContent: true,
-              showOwner: true,
+                "showType": true,
+                "showOwner": true,
+                "showPreviousTransaction": true,
+                "showDisplay": false,
+                "showContent": true,
+                "showBcs": false,
+                "showStorageRebate": true
             },
         });
 
         let patches = [];
         let walrus = null;
+        let owner = null;
         if (result?.data?.content) {
             const fields = (result.data.content as any).fields;
             if (fields && fields.id && fields.id.id) {
@@ -104,11 +132,16 @@ export default class SuiSqlBlockchain {
             if (fields && fields.walrus) {
                 walrus = fields.walrus;
             }
+
+            if (result.data.owner) {
+                owner = (result.data.owner as SuiSqlOwnerType);
+            }
         }
 
         return {
             patches,
             walrus,
+            owner, 
         };
     }
 
@@ -119,7 +152,7 @@ export default class SuiSqlBlockchain {
     async saveFull(dbId: string, full: Uint8Array) {
         const packageId = await this.getPackageId();
 
-        if (!packageId || !this.signer || !this.suiClient || !this.walrus) {
+        if (!packageId || !this.suiClient || !this.walrus) {
             throw new Error('no packageId or no signer or no walrus');
         }
         
@@ -142,31 +175,39 @@ export default class SuiSqlBlockchain {
                 typeArguments: [], 
             });
 
-        tx.setSenderIfNotSet(this.signer.toSuiAddress());
-        const transactionBytes = await tx.build({ client: this.suiClient });
-
-        const result = await this.suiClient.signAndExecuteTransaction({ 
-                signer: this.signer, 
-                transaction: transactionBytes,
-            });
-        if (result && result.digest) {
-            try {
-                await this.suiClient.waitForTransaction({
-                    digest: result.digest,
-                });
-
-                return true;
-            } catch (_) {
-                return false;
-            }
+        try {
+            const txResults = await this.executeTx(tx);
+            return true;
+        } catch (e) {
+            SuiSqlLog.log('executing tx to saveFull failed', e);
+            return false;
         }
-        return false;
+
+        // tx.setSenderIfNotSet(this.signer.toSuiAddress());
+        // const transactionBytes = await tx.build({ client: this.suiClient });
+
+        // const result = await this.suiClient.signAndExecuteTransaction({ 
+        //         signer: this.signer, 
+        //         transaction: transactionBytes,
+        //     });
+        // if (result && result.digest) {
+        //     try {
+        //         await this.suiClient.waitForTransaction({
+        //             digest: result.digest,
+        //         });
+
+        //         return true;
+        //     } catch (_) {
+        //         return false;
+        //     }
+        // }
+        // return false;
     }
 
     async savePatch(dbId: string, patch: Uint8Array) {
         const packageId = await this.getPackageId();
 
-        if (!packageId || !this.signer || !this.suiClient) {
+        if (!packageId || !this.suiClient) {
             throw new Error('no packageId or no signer');
         }
 
@@ -184,25 +225,33 @@ export default class SuiSqlBlockchain {
                 typeArguments: [], 
             });
 
-        tx.setSenderIfNotSet(this.signer.toSuiAddress());
-        const transactionBytes = await tx.build({ client: this.suiClient });
+        // tx.setSenderIfNotSet(this.signer.toSuiAddress());
+        // const transactionBytes = await tx.build({ client: this.suiClient });
 
-        const result = await this.suiClient.signAndExecuteTransaction({ 
-                signer: this.signer, 
-                transaction: transactionBytes,
-            });
-        if (result && result.digest) {
-            try {
-                await this.suiClient.waitForTransaction({
-                    digest: result.digest,
-                });
-
-                return true;
-            } catch (_) {
-                return false;
-            }
+        try {
+            const txResults = await this.executeTx(tx);
+            return true;
+        } catch (e) {
+            console.error('savePatch error', e);
+            return false;
         }
-        return false;
+
+        // const result = await this.suiClient.signAndExecuteTransaction({ 
+        //         signer: this.signer, 
+        //         transaction: tx,
+        //     });
+        // if (result && result.digest) {
+        //     try {
+        //         await this.suiClient.waitForTransaction({
+        //             digest: result.digest,
+        //         });
+
+        //         return true;
+        //     } catch (_) {
+        //         return false;
+        //     }
+        // }
+        // return false;
     }
 
     async getDbId(name: string) {
@@ -252,7 +301,7 @@ export default class SuiSqlBlockchain {
         const packageId = await this.getPackageId();
         const bankId = await this.getBankId();
 
-        if (!packageId || !bankId || !this.signer || !this.suiClient) {
+        if (!packageId || !bankId || !this.suiClient) {
             throw new Error('no bankId or packageId or no signer');
         }
 
@@ -271,38 +320,82 @@ export default class SuiSqlBlockchain {
                 typeArguments: [], 
             });
 
-        tx.setSenderIfNotSet(this.signer.toSuiAddress());
-        const transactionBytes = await tx.build({ client: this.suiClient });
+        // tx.setSenderIfNotSet(this.signer.toSuiAddress());
+        // const transactionBytes = await tx.build({ client: this.suiClient });
 
         let createdDbId = null;
 
-        const result = await this.suiClient.signAndExecuteTransaction({ 
-            signer: this.signer, 
-            transaction: transactionBytes,
-        });
+        const txResults = await this.executeTx(tx);
 
-        if (result && result.digest) {
-            const finalResults = await this.suiClient.waitForTransaction({
-                digest: result.digest,
+        // const result = await this.suiClient.signAndExecuteTransaction({ 
+        //     signer: this.signer, 
+        //     transaction: transactionBytes,
+        // });
+
+        // if (result && result.digest) {
+        //     const finalResults = await this.suiClient.waitForTransaction({
+        //         digest: result.digest,
+        //         options: {
+        //             showEffects: true,
+        //             showEvents: true,
+        //         },
+        //     });
+
+        if (txResults && txResults.events && txResults.events.length) {
+            for (const event of txResults.events) {
+                if (event && event.type && event.type.indexOf('NewDBEvent') !== -1) {
+                    createdDbId = (event.parsedJson as any).id;
+                }
+            }
+        }
+
+        // } 
+        
+        if (!createdDbId) {
+            throw new Error('can not create suiSql db');
+        }
+
+        return createdDbId;
+    }
+
+    async executeTx(tx: Transaction) {
+        if (!this.suiClient) {
+            throw new Error('no suiClient');
+        }
+
+        let digest = null;
+        if (this.signAndExecuteTransaction) {
+            digest = await this.signAndExecuteTransaction(tx);
+        } else if (this.signer) {
+            tx.setSenderIfNotSet(this.signer.toSuiAddress());
+            const transactionBytes = await tx.build({ client: this.suiClient });
+
+            const result = await this.suiClient.signAndExecuteTransaction({ 
+                signer: this.signer, 
+                transaction: transactionBytes,
+                requestType: 'WaitForLocalExecution',
+            });
+
+            if (result && result.digest) {
+                digest = result.digest;
+            }
+        } else {
+            throw new Error('either signer or signAndExecuteTransaction function required');
+        }
+
+
+        if (digest) {
+            const finalResults = await this.suiClient.getTransactionBlock({
+                digest: digest,
                 options: {
                     showEffects: true,
                     showEvents: true,
                 },
             });
 
-            if (finalResults && finalResults.events && finalResults.events.length) {
-                for (const event of finalResults.events) {
-                    if (event && event.type && event.type.indexOf('NewDBEvent') !== -1) {
-                        createdDbId = (event.parsedJson as any).id;
-                    }
-                }
-            }
-        } 
-        
-        if (!createdDbId) {
-            throw new Error('can not submit transaction: '+result);
+            return finalResults;
         }
 
-        return createdDbId;
+        return null;
     }
 }

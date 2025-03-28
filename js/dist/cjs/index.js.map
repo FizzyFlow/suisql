@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/index.ts"],
+  "sourcesContent": ["import SuiSql from \"./SuiSql\";\n\n\nexport default SuiSql;\nexport { runWasm } from '@mysten/walrus';"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,oBAAmB;AAInB,oBAAwB;AADxB,IAAO,gBAAQ,cAAAA;",
+  "names": ["SuiSql"]
+}

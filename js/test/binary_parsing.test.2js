@@ -1,0 +1,82 @@
+import { describe, expect, it } from "vitest";
+import SuiSql from "../src/SuiSql";
+import SuiSqliteBinaryParser from '../src/SuiSqliteBinaryParser';
+
+let db = null;
+
+describe("test binary sqlite format", () => {
+    it("creates empty db with no blockchain", {}, async () => {
+        db = new SuiSql({ name: 'test', }); // we are not going to save it
+        expect(db).toBeTruthy();
+        await db.initialize();
+
+        // need to run some query, as empty database is just 0 bytes
+        await db.run('CREATE TABLE employees(id integer primary key,  name    text);'); 
+
+        // now it has full structure:
+        const binary = db.binary;
+        expect(binary.getSize() > 0).toBeTruthy();
+        expect(binary.checkHeaderIsOk()).toBeTruthy();
+        expect(binary.checkLooksValid()).toBeTruthy();
+
+
+        console.log(await db.binary.getPageSha256(0));
+        console.log(await db.binary.getPageSha256(1));
+        console.log(await db.binary.getPageSha256(2));
+
+        await db.run('CREATE TABLE employees2 (id integer primary key,  name    text);'); 
+
+        console.log(await db.binary.getPageSha256(0));
+        console.log(await db.binary.getPageSha256(1));
+        console.log(await db.binary.getPageSha256(2));
+
+
+        // const binary = db.export();
+
+        // expect(binary.length > 0).toBeTruthy();
+
+        // console.log(binary);
+
+        // let parser = new SuiSqliteBinaryParser({ binary });
+        // expect(parser.checkHeaderIsOk()).toBeTruthy();
+        // expect(parser.checkLooksValid()).toBeTruthy();
+
+        // console.log(parser.getPageSize());
+        // console.log(parser.getPagesCount());
+        // console.log(parser.getFileChangeCounter());
+
+        // console.log(await parser.getPageWalrusBlobId(0));
+        // console.log(await parser.getPageWalrusBlobId(1));
+        // console.log(await parser.getPageWalrusBlobId(2));
+
+        // // need to run some query, as empty database is just 0 bytes
+        // await db.run('CREATE TABLE employees2 (id integer primary key,  name    text);'); 
+
+        // parser = new SuiSqliteBinaryParser({ binary: db.export() });
+
+        // console.log(await parser.getPageWalrusBlobId(0));
+        // console.log(await parser.getPageWalrusBlobId(1));
+        // console.log(await parser.getPageWalrusBlobId(2));
+        // console.log(await parser.getPageWalrusBlobId(3));
+
+
+        // console.log(parser.getSize());
+        // console.log(parser.getPageSize());
+        // console.log(parser.getPagesCount());
+
+        // await db.run("INSERT INTO employees2 (id,  name) VALUES (1, 'test');"); 
+
+        // parser = new SuiSqliteBinaryParser({ binary: db.export() });
+
+        // console.log(await parser.getPageWalrusBlobId(0));
+        // console.log(await parser.getPageWalrusBlobId(1));
+        // console.log(await parser.getPageWalrusBlobId(2));
+        // console.log(await parser.getPageWalrusBlobId(3));
+
+
+        // console.log(parser.getSize());
+        // console.log(parser.getPageSize());
+        // console.log(parser.getPagesCount());
+
+    });
+});

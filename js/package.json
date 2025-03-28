@@ -1,27 +1,28 @@
 {
-  "name": "suidb",
+  "name": "suisql",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
-  "type": "module",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "scripts": {
-    "dev": "vite --host",
     "docs": "npx typedoc --plugin typedoc-plugin-markdown src/*",
-    "build": "rimraf build/**/* && tsc && vite build && dts-bundle-generator --config ./dts-bundle-generator.config.ts && copyfiles ./package.json build && copyfiles ./README.md build",
-    "test": "vitest --testTimeout 90000",
-    "test:coverage": "vitest --coverage",
-    "lint:scripts": "eslint . --ext .ts",
-    "lint:styles": "stylelint ./**/*.{css,scss}",
-    "format:scripts": "prettier . --write",
-    "format:styles": "stylelint ./**/*.{css,scss} --fix",
-    "format": "npm run format:scripts && npm run format:styles"
+    "build": "node buildPackage.mjs",
+    "test": "vitest --testTimeout 90000"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.13.10",
     "@types/pako": "^2.0.3",
     "@types/sql.js": "^1.4.9",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -29,6 +30,7 @@
     "@vitest/coverage-v8": "^2.0.4",
     "copyfiles": "^2.4.1",
     "dts-bundle-generator": "^9.5.1",
+    "esbuild": "^0.25.1",
     "eslint": "^9.21.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
@@ -52,10 +54,12 @@
   "dependencies": {
     "@mysten/bcs": "^1.5.0",
     "@mysten/sui": "^1.21.2",
+    "@mysten/walrus": "file:../../walrus-overload",
     "browserify-zlib": "^0.2.0",
     "dataloader": "^2.2.3",
     "pako": "^2.1.0",
     "sql.js": "^1.12.0",
-    "suidouble": "^1.21.0"
+    "suidouble": "^1.24.0",
+    "valibot": "0.42.1"
   }
 }

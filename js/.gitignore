@@ -11,7 +11,6 @@ pnpm-lock.yaml
 
 node_modules
 build
-dist
 dist-ssr
 *.local
 coverage

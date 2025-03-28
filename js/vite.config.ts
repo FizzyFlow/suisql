@@ -32,6 +32,9 @@ export default defineConfig({
       formats,
       fileName: format => fileName[format],
     },
+    rollupOptions: {
+      external: [ 'src/walrusWasm/walrus_wasm.js' ],
+    },
   },
   test: {
     watch: false,

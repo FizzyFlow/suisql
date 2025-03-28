@@ -49,6 +49,8 @@ export default class SuiSqlStatement {
         this.writeExecutions = [];
     }
 
+
+
     bind(params: BindParams) {
         this.params = params;
         if (this.stmp) {
@@ -71,6 +73,7 @@ export default class SuiSqlStatement {
                 at: this.executedAt,
             });
             this.suiSql.markAsOk();
+            this.suiSql.mostRecentWriteChangeTime = this.executedAt;
         }
 
         return stepResult;
@@ -124,7 +127,7 @@ export default class SuiSqlStatement {
      * Loop over results from db. Callback may be an async function, waited to be fulfilled to get the next item.
      * returns count of processed results.
      */
-    async forEach(callback: Function, maxCount: number | undefined | null) {
+    async forEach(callback: Function, maxCount?: number | undefined | null) {
         let processedCount = 0;
         let needMore = true;
         while (needMore) {

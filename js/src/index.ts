@@ -1,3 +1,5 @@
+import SuiSql from "./SuiSql";
 
 
-export * from "./SuiSqlConsts";
+export default SuiSql;
+export { runWasm } from '@mysten/walrus';
