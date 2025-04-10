@@ -1,9 +1,7 @@
 "use strict";
-var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __export = (target, all) => {
@@ -18,14 +16,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var SuiSqlBlockchain_exports = {};
@@ -36,29 +26,24 @@ module.exports = __toCommonJS(SuiSqlBlockchain_exports);
 var import_SuiSqlConsts = require("./SuiSqlConsts");
 var import_transactions = require("@mysten/sui/transactions");
 var import_bcs = require("@mysten/sui/bcs");
-var import_SuiSqlWalrus = __toESM(require("./SuiSqlWalrus.js"));
-var import_SuiSqlLog = __toESM(require("./SuiSqlLog"));
 class SuiSqlBlockchain {
   constructor(params) {
     __publicField(this, "suiClient");
     __publicField(this, "signer");
+    __publicField(this, "currentWalletAddress");
     __publicField(this, "signAndExecuteTransaction");
     __publicField(this, "network", "local");
     __publicField(this, "forcedPackageId");
     __publicField(this, "bankId");
-    __publicField(this, "walrus");
     this.suiClient = params.suiClient;
     this.signer = params.signer;
+    this.currentWalletAddress = params.currentWalletAddress;
     if (params.signAndExecuteTransaction) {
       this.signAndExecuteTransaction = params.signAndExecuteTransaction;
     }
     if (params.network) {
       this.network = params.network;
     }
-    this.walrus = new import_SuiSqlWalrus.default({
-      suiClient: params.walrusSuiClient ? params.walrusSuiClient : this.suiClient,
-      signer: this.signer
-    });
   }
   setPackageId(packageId) {
     this.forcedPackageId = packageId;
@@ -73,6 +58,36 @@ class SuiSqlBlockchain {
     }
     return null;
   }
+  async getWriteCapId(dbId) {
+    if (!this.suiClient) {
+      throw new Error("suiClient required");
+    }
+    const packageId = await this.getPackageId();
+    if (!packageId) {
+      throw new Error("can not find bank if do not know the package");
+    }
+    const currentAddress = this.getCurrentAddress();
+    if (!currentAddress) {
+      return null;
+    }
+    const result = await this.suiClient.getOwnedObjects({
+      owner: currentAddress,
+      filter: {
+        StructType: packageId + "::suisql::WriteCap"
+      },
+      options: {
+        showContent: true
+      }
+    });
+    let writeCapId = null;
+    for (const obj of result.data) {
+      const fields = (obj?.data?.content).fields;
+      if (fields?.sui_sql_db_id == dbId) {
+        writeCapId = obj?.data?.objectId;
+      }
+    }
+    return writeCapId;
+  }
   async getBankId() {
     if (this.bankId) {
       return this.bankId;
@@ -86,7 +101,7 @@ class SuiSqlBlockchain {
     }
     let bankId = null;
     const resp = await this.suiClient.queryEvents({
-      query: { "MoveEventType": "" + packageId + "::events::NewBankEvent" }
+      query: { "MoveEventType": "" + packageId + "::suisql_events::NewBankEvent" }
     });
     if (resp && resp.data && resp.data[0] && resp.data[0].parsedJson) {
       bankId = resp.data[0].parsedJson.id;
@@ -129,48 +144,73 @@ class SuiSqlBlockchain {
       owner
     };
   }
-  async getFull(walrusBlobId) {
-    return await this.walrus?.read(walrusBlobId);
-  }
-  async saveFull(dbId, full) {
-    const packageId = await this.getPackageId();
-    if (!packageId || !this.suiClient || !this.walrus) {
-      throw new Error("no packageId or no signer or no walrus");
-    }
-    const blobId = await this.walrus.write(full);
-    if (!blobId) {
-      throw new Error("can not write blob to walrus");
-    }
-    const tx = new import_transactions.Transaction();
-    const target = "" + packageId + "::suisql::clamp_with_walrus";
-    const args = [
-      tx.object(dbId),
-      tx.pure(import_bcs.bcs.string().serialize(blobId))
-    ];
-    tx.moveCall({
-      target,
-      arguments: args,
-      typeArguments: []
-    });
-    try {
-      const txResults = await this.executeTx(tx);
-      return true;
-    } catch (e) {
-      import_SuiSqlLog.default.log("executing tx to saveFull failed", e);
-      return false;
-    }
-  }
-  async savePatch(dbId, patch) {
+  // async getFull(walrusBlobId: string) {
+  //     return await this.walrus?.read(walrusBlobId);
+  // }
+  // async saveFull(dbId: string, full: Uint8Array) {
+  //     const packageId = await this.getPackageId();
+  //     if (!packageId || !this.suiClient || !this.walrus) {
+  //         throw new Error('no packageId or no signer or no walrus');
+  //     }
+  //     const blobId = await this.walrus.write(full);
+  //     if (!blobId) {
+  //         throw new Error('can not write blob to walrus');
+  //     }
+  //     const tx = new Transaction();
+  //     const target = ''+packageId+'::suisql::clamp_with_walrus';
+  //     const args = [
+  //         tx.object(dbId),
+  //         tx.pure(bcs.string().serialize(blobId)),
+  //     ];
+  //     tx.moveCall({ 
+  //             target, 
+  //             arguments: args, 
+  //             typeArguments: [], 
+  //         });
+  //     try {
+  //         const txResults = await this.executeTx(tx);
+  //         return true;
+  //     } catch (e) {
+  //         SuiSqlLog.log('executing tx to saveFull failed', e);
+  //         return false;
+  //     }
+  //     // tx.setSenderIfNotSet(this.signer.toSuiAddress());
+  //     // const transactionBytes = await tx.build({ client: this.suiClient });
+  //     // const result = await this.suiClient.signAndExecuteTransaction({ 
+  //     //         signer: this.signer, 
+  //     //         transaction: transactionBytes,
+  //     //     });
+  //     // if (result && result.digest) {
+  //     //     try {
+  //     //         await this.suiClient.waitForTransaction({
+  //     //             digest: result.digest,
+  //     //         });
+  //     //         return true;
+  //     //     } catch (_) {
+  //     //         return false;
+  //     //     }
+  //     // }
+  //     // return false;
+  // }
+  async savePatch(dbId, patch, expectedWalrusBlobId) {
     const packageId = await this.getPackageId();
     if (!packageId || !this.suiClient) {
       throw new Error("no packageId or no signer");
     }
+    const writeCapId = await this.getWriteCapId(dbId);
+    if (!writeCapId) {
+      throw new Error("no writeCapId");
+    }
     const tx = new import_transactions.Transaction();
-    const target = "" + packageId + "::suisql::patch";
+    const target = "" + packageId + "::suisql::patch" + (expectedWalrusBlobId ? "_and_expect_walrus" : "");
     const args = [
       tx.object(dbId),
+      tx.object(writeCapId),
       tx.pure(import_bcs.bcs.vector(import_bcs.bcs.u8()).serialize(patch))
     ];
+    if (expectedWalrusBlobId) {
+      args.push(tx.pure(import_bcs.bcs.u256().serialize(expectedWalrusBlobId)));
+    }
     tx.moveCall({
       target,
       arguments: args,
@@ -249,6 +289,18 @@ class SuiSqlBlockchain {
       throw new Error("can not create suiSql db");
     }
     return createdDbId;
+  }
+  getCurrentAddress() {
+    if (!this.suiClient) {
+      throw new Error("no suiClient");
+    }
+    if (this.signer) {
+      return this.signer.toSuiAddress();
+    }
+    if (this.currentWalletAddress) {
+      return this.currentWalletAddress;
+    }
+    return null;
   }
   async executeTx(tx) {
     if (!this.suiClient) {

@@ -1,4 +1,3 @@
-import initSqlJs from 'sql.js';
 import SuiSqlStatement from './SuiSqlStatement';
 import SuiSqlSync from './SuiSqlSync';
 import type { SuiClient } from '@mysten/sui/client';
@@ -7,15 +6,18 @@ import SuiSqlField from './SuiSqlField';
 import type { BindParams } from './SuiSqlLibrarian';
 import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain";
 import SuiSqliteBinaryView from './SuiSqliteBinaryView';
+import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus';
 type SuiSqlParams = {
+    debug?: boolean;
     id?: string;
     name?: string;
+    network?: string;
     suiClient?: SuiClient;
-    debug?: boolean;
-    walrusSuiClient?: SuiClient;
     signer?: Signer;
     signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction;
-    network?: string;
+    currentWalletAddress?: string;
+    walrusClient?: SuiSqlWalrusWalrusClient;
+    walrusWasmUrl?: string;
 };
 declare enum State {
     INITIALIZING = "INITIALIZING",
@@ -36,27 +38,31 @@ export default class SuiSql {
     private paramsCopy?;
     mostRecentWriteChangeTime?: number;
     binaryView?: SuiSqliteBinaryView;
+    initialBinaryView?: SuiSqliteBinaryView;
     constructor(params: SuiSqlParams);
     getBinaryView(): SuiSqliteBinaryView | null;
+    getBinaryPatch(): Promise<Uint8Array | null>;
+    getExpectedBlobId(): Promise<bigint | null>;
+    applyBinaryPatch(binaryPatch: Uint8Array): Promise<boolean>;
     database(idOrName: string): Promise<SuiSql>;
     get db(): {
         close(): void;
         create_function(name: string, func: (...args: any[]) => any): /*elided*/ any;
-        each(sql: string, params: BindParams, callback: initSqlJs.ParamsCallback, done: () => void): /*elided*/ any;
-        each(sql: string, callback: initSqlJs.ParamsCallback, done: () => void): /*elided*/ any;
-        exec(sql: string, params?: BindParams): initSqlJs.QueryExecResult[];
+        each(sql: string, params: BindParams, callback: import("sql.js").ParamsCallback, done: () => void): /*elided*/ any;
+        each(sql: string, callback: import("sql.js").ParamsCallback, done: () => void): /*elided*/ any;
+        exec(sql: string, params?: BindParams): import("sql.js").QueryExecResult[];
         export(): Uint8Array;
         getRowsModified(): number;
         handleError(): null | never;
         iterateStatements(sql: string): {
             getRemainingSQL(): string;
-            next(): initSqlJs.StatementIteratorResult;
+            next(): import("sql.js").StatementIteratorResult;
             [Symbol.iterator](): Iterator<{
                 bind(values?: BindParams): boolean;
                 free(): boolean;
                 freemem(): void;
-                get(params?: BindParams): initSqlJs.SqlValue[];
-                getAsObject(params?: BindParams): initSqlJs.ParamsObject;
+                get(params?: BindParams): import("sql.js").SqlValue[];
+                getAsObject(params?: BindParams): import("sql.js").ParamsObject;
                 getColumnNames(): string[];
                 getNormalizedSQL(): string;
                 getSQL(): string;
@@ -69,8 +75,8 @@ export default class SuiSql {
             bind(values?: BindParams): boolean;
             free(): boolean;
             freemem(): void;
-            get(params?: BindParams): initSqlJs.SqlValue[];
-            getAsObject(params?: BindParams): initSqlJs.ParamsObject;
+            get(params?: BindParams): import("sql.js").SqlValue[];
+            getAsObject(params?: BindParams): import("sql.js").ParamsObject;
             getColumnNames(): string[];
             getNormalizedSQL(): string;
             getSQL(): string;

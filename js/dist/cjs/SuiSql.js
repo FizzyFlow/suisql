@@ -63,6 +63,7 @@ class SuiSql {
     __publicField(this, "mostRecentWriteChangeTime");
     // time at which the most recent write operation was done
     __publicField(this, "binaryView");
+    __publicField(this, "initialBinaryView");
     this.paramsCopy = { ...params };
     if (params.debug !== void 0) {
       import_SuiSqlLog.default.switch(params.debug);
@@ -83,11 +84,12 @@ class SuiSql {
           id: this.id,
           name: this.name,
           suiClient: this.suiClient,
-          walrusSuiClient: params.walrusSuiClient,
           signer: params.signer,
           signAndExecuteTransaction: params.signAndExecuteTransaction,
+          currentWalletAddress: params.currentWalletAddress,
           suiSql: this,
-          network: params.network
+          network: params.network,
+          walrusClient: params.walrusClient
         });
       }
     }
@@ -105,6 +107,30 @@ class SuiSql {
       return this.binaryView;
     }
     return null;
+  }
+  async getBinaryPatch() {
+    const currentBinaryView = this.getBinaryView();
+    if (this.initialBinaryView && currentBinaryView) {
+      const binaryPatch = await currentBinaryView.getBinaryPatch(this.initialBinaryView);
+      return binaryPatch;
+    }
+    return null;
+  }
+  async getExpectedBlobId() {
+    const data = this.export();
+    if (data && this.sync && this.sync.walrus) {
+      return await this.sync.walrus.calculateBlobId(data);
+    }
+    return null;
+  }
+  async applyBinaryPatch(binaryPatch) {
+    const currentBinaryView = this.getBinaryView();
+    if (!currentBinaryView) {
+      return false;
+    }
+    const patched = await currentBinaryView.getPatched(binaryPatch);
+    this.replace(patched);
+    return true;
   }
   async database(idOrName) {
     const paramsCopy = { ...this.paramsCopy };
@@ -131,6 +157,11 @@ class SuiSql {
   }
   replace(data) {
     if (this.librarian.isReady) {
+      this.binaryView = void 0;
+      this.initialBinaryView = new import_SuiSqliteBinaryView.default({
+        binary: data
+      });
+      ;
       this._db = this.librarian.fromBinarySync(data);
       this.mostRecentWriteChangeTime = Date.now();
       return true;
@@ -165,6 +196,12 @@ class SuiSql {
               this.state = "EMPTY" /* EMPTY */;
             } else {
               this.state = "OK" /* OK */;
+            }
+            const data = this.export();
+            if (data) {
+              this.initialBinaryView = new import_SuiSqliteBinaryView.default({
+                binary: data
+              });
             }
           }
         }

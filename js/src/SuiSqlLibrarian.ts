@@ -30,8 +30,8 @@ export default class SuiSqlLibrarian {
     }
 
     async loadScript(): Promise<Function> {
-        if (window.initSqlJs) {
-            return window.initSqlJs;
+        if (window['initSqlJs']) {
+            return window['initSqlJs'];
         }
 
         const promise = new Promise((res)=>{
@@ -40,7 +40,7 @@ export default class SuiSqlLibrarian {
             imported.setAttribute("type", "text/javascript");
             document.head.appendChild(imported);
             imported.onload = () => {
-                res(window.initSqlJs);
+                res(window['initSqlJs']);
             };
         });
 

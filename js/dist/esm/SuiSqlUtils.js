@@ -1,4 +1,5 @@
 import pako from "pako";
+import { bcs } from "@mysten/sui/bcs";
 const compress = async (input) => {
   return pako.deflate(input);
 };
@@ -59,6 +60,27 @@ const extractTopLevelParenthesesText = (str) => {
   return result;
 };
 const int32ToUint8ArrayBE = (num) => Uint8Array.from([num >>> 24, num >>> 16 & 255, num >>> 8 & 255, num & 255]);
+const bigintToUint8Array = (bigint) => {
+  return bcs.u256().serialize(bigint).toBytes();
+};
+const idTo64 = (id) => {
+  const asA = Array.from(bigintToUint8Array(BigInt(id)));
+  let base64String = btoa(String.fromCharCode.apply(null, asA));
+  return base64String.replaceAll("/", "_").replaceAll("+", "-").replaceAll("=", "");
+};
+const walrus64ToBigInt = (v) => {
+  const base64 = v.replaceAll("_", "/").replaceAll("-", "+");
+  const raw = atob(base64);
+  const hex = [];
+  raw.split("").forEach(function(ch) {
+    var h = ch.charCodeAt(0).toString(16);
+    if (h.length % 2) {
+      h = "0" + h;
+    }
+    hex.unshift(h);
+  });
+  return BigInt("0x" + hex.join(""));
+};
 const concatUint8Arrays = (arrays) => {
   const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
   const result = new Uint8Array(totalLength);
@@ -69,13 +91,32 @@ const concatUint8Arrays = (arrays) => {
   }
   return result;
 };
+function blobIdFromInt(blobId) {
+  return bcs.u256().serialize(blobId).toBase64().replace(/=*$/, "").replaceAll("+", "-").replaceAll("/", "_");
+}
+function blobIdFromBytes(blobId) {
+  return blobIdFromInt(bcs.u256().parse(blobId));
+}
+function blobIdIntFromBytes(blobId) {
+  return BigInt(bcs.u256().parse(blobId));
+}
+function blobIdToInt(blobId) {
+  return BigInt(bcs.u256().fromBase64(blobId.replaceAll("-", "+").replaceAll("_", "/")));
+}
 export {
   anyShallowCopy,
+  bigintToUint8Array,
+  blobIdFromBytes,
+  blobIdFromInt,
+  blobIdIntFromBytes,
+  blobIdToInt,
   compress,
   concatUint8Arrays,
   decompress,
   getFieldsFromCreateTableSql,
+  idTo64,
   int32ToUint8ArrayBE,
-  isSureWriteSql
+  isSureWriteSql,
+  walrus64ToBigInt
 };
 //# sourceMappingURL=SuiSqlUtils.js.map

@@ -3,7 +3,7 @@ import SuiSql from "../src/SuiSql";
 
 describe("set up empty db", () => {
     it("works", async () => {
-        const db = new SuiSql();
+        const db = new SuiSql({ name: 'random_name', });
         const state = await db.initialize();
         expect(state).toEqual('EMPTY');
         expect(db.writeExecutions.length).toEqual(0);

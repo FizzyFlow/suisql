@@ -28,11 +28,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var index_exports = {};
 __export(index_exports, {
-  default: () => index_default,
-  runWasm: () => import_walrus.runWasm
+  default: () => index_default
 });
 module.exports = __toCommonJS(index_exports);
 var import_SuiSql = __toESM(require("./SuiSql"));
-var import_walrus = require("@mysten/walrus");
 var index_default = import_SuiSql.default;
 //# sourceMappingURL=index.js.map

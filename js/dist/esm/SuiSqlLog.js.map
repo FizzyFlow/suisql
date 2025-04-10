@@ -1,7 +1,7 @@
 {
   "version": 3,
   "sources": ["../../src/SuiSqlLog.ts"],
-  "sourcesContent": ["\nexport default class SuiSqlLog  {\n\n    static _debug = false;\n\n\tstatic switch(onOff: boolean) {\n\t\tSuiSqlLog._debug = onOff;\n\t}\n\n\tstatic log(...args: any[]) {\n\t\tif (!SuiSqlLog._debug) {\n\t\t\treturn;\n\t\t}\n\n\t\tlet prefix = 'SuiSql';\n\n\t\targs.unshift(this.constructor.name+' |');\n\t\targs.unshift(prefix);\n\t\tconsole.info.apply(null, args);\n\t}\n};"],
-  "mappings": ";;;AACA,MAAqB,aAArB,MAAqB,WAAW;AAAA,EAI/B,OAAO,OAAO,OAAgB;AAC7B,eAAU,SAAS;AAAA,EACpB;AAAA,EAEA,OAAO,OAAO,MAAa;AAC1B,QAAI,CAAC,WAAU,QAAQ;AACtB;AAAA,IACD;AAEA,QAAI,SAAS;AAEb,SAAK,QAAQ,KAAK,YAAY,OAAK,IAAI;AACvC,SAAK,QAAQ,MAAM;AACnB,YAAQ,KAAK,MAAM,MAAM,IAAI;AAAA,EAC9B;AACD;AAjBI,cAFiB,YAEV,UAAS;AAFpB,IAAqB,YAArB;AAmBC;",
+  "sourcesContent": ["\nexport default class SuiSqlLog  {\n\n    static _debug = false;\n\n\tstatic switch(onOff: boolean) {\n\t\tSuiSqlLog._debug = onOff;\n\t}\n\n\tstatic log(...args: any[]) {\n\t\tif (!SuiSqlLog._debug) {\n\t\t\treturn;\n\t\t}\n\n\t\tlet prefix = 'SuiSql | ';\n\n\t\targs.unshift(prefix);\n\t\tconsole.info.apply(null, args);\n\t}\n};"],
+  "mappings": ";;;AACA,MAAqB,aAArB,MAAqB,WAAW;AAAA,EAI/B,OAAO,OAAO,OAAgB;AAC7B,eAAU,SAAS;AAAA,EACpB;AAAA,EAEA,OAAO,OAAO,MAAa;AAC1B,QAAI,CAAC,WAAU,QAAQ;AACtB;AAAA,IACD;AAEA,QAAI,SAAS;AAEb,SAAK,QAAQ,MAAM;AACnB,YAAQ,KAAK,MAAM,MAAM,IAAI;AAAA,EAC9B;AACD;AAhBI,cAFiB,YAEV,UAAS;AAFpB,IAAqB,YAArB;AAkBC;",
   "names": []
 }

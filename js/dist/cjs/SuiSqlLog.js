@@ -31,8 +31,7 @@ const _SuiSqlLog = class _SuiSqlLog {
     if (!_SuiSqlLog._debug) {
       return;
     }
-    let prefix = "SuiSql";
-    args.unshift(this.constructor.name + " |");
+    let prefix = "SuiSql | ";
     args.unshift(prefix);
     console.info.apply(null, args);
   }

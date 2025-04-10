@@ -4,11 +4,10 @@ version = "0.0.1"
 edition = "2024.beta"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "testnet-v1.44.2" }
+Walrus = { local = "../3rd_party/walrus" }
 
 [addresses]
 suisql =  "0x0"
-
 
 
 

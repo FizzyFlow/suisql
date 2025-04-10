@@ -3,9 +3,9 @@ type SuiSqliteBinaryViewParams = {
 };
 export default class SuiSqliteBinaryView {
     binary: Uint8Array;
-    private walrusClient?;
     createdAt?: number;
     constructor(params: SuiSqliteBinaryViewParams);
+    getPatched(binaryPatch: Uint8Array): Promise<Uint8Array>;
     getBinaryPatch(comparedTo: SuiSqliteBinaryView): Promise<Uint8Array<ArrayBufferLike> | null>;
     /**
      * Returns binary of SqlLite format page. Little difference is that:
@@ -17,7 +17,6 @@ export default class SuiSqliteBinaryView {
      */
     getPage(pageNumber: number): Uint8Array;
     getPageSha256(pageNumber: number): Promise<string>;
-    getPageWalrusBlobId(pageNumber: number): Promise<string | null>;
     checkHeaderIsOk(): boolean;
     checkLooksValid(): boolean;
     getSize(): number;

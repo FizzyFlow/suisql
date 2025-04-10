@@ -27,6 +27,7 @@ const run = async()=>{
     const pk = suiMaster.addPackage({
         path: path.join(__dirname, '../move'),
     });
+    await pk.build({ env: 'testnet' });
     await pk.publish();
 
     // await adjustMoveTOMLFor('../move/Move.toml', 'local');

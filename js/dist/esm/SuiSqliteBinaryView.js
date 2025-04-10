@@ -1,20 +1,60 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { WalrusClient } from "@mysten/walrus";
-import { int32ToUint8ArrayBE, concatUint8Arrays, compress } from "./SuiSqlUtils";
+import { int32ToUint8ArrayBE, concatUint8Arrays, compress, decompress } from "./SuiSqlUtils";
 import SuiSqlBinaryPatch from "./SuiSqlBinaryPatch";
 class SuiSqliteBinaryView {
   constructor(params) {
     __publicField(this, "binary");
-    __publicField(this, "walrusClient");
+    // private walrusClient?: WalrusClient;
     __publicField(this, "createdAt");
     this.binary = Uint8Array.from(params.binary);
-    this.walrusClient = new WalrusClient({
-      network: "testnet",
-      suiRpcUrl: "https://fullnode.testnet.sui.io:443"
-    });
     this.createdAt = Date.now();
+  }
+  async getPatched(binaryPatch) {
+    const decompressed = await decompress(binaryPatch);
+    const pageSize = this.getPageSize();
+    let maxPageNumber = this.getPagesCount() - 1;
+    const pages = {};
+    let pos = 0;
+    while (pos < decompressed.length) {
+      const command = decompressed[pos];
+      if (command == 0) {
+        pos++;
+        const pageNumber = new DataView(decompressed.buffer, pos).getUint32(0, false);
+        pos = pos + 4;
+        const page = decompressed.slice(pos, pos + pageSize);
+        pos = pos + pageSize;
+        if (pageNumber > maxPageNumber) {
+          maxPageNumber = pageNumber;
+        }
+        pages[pageNumber] = page;
+      } else if (command == 1) {
+        pos++;
+        const pageNumber = new DataView(decompressed.buffer, pos).getUint32(0, false);
+        pos = pos + 4;
+        const patchSize = new DataView(decompressed.buffer, pos).getUint32(0, false);
+        pos = pos + 4;
+        const patch = decompressed.slice(pos, pos + patchSize);
+        console.log(patch);
+        const current = this.getPage(pageNumber);
+        const patched = SuiSqlBinaryPatch.applyPatch(current, patch);
+        pos = pos + patchSize;
+        if (pageNumber > maxPageNumber) {
+          maxPageNumber = pageNumber;
+        }
+        pages[pageNumber] = patched;
+      }
+    }
+    const ret = [];
+    for (let i = 0; i <= maxPageNumber; i++) {
+      if (pages[i]) {
+        ret.push(pages[i]);
+      } else {
+        ret.push(this.getPage(i));
+      }
+    }
+    return concatUint8Arrays(ret);
   }
   async getBinaryPatch(comparedTo) {
     const pageSize1 = comparedTo.getPageSize();
@@ -38,6 +78,7 @@ class SuiSqliteBinaryView {
           const page1 = comparedTo.getPage(i);
           const page2 = this.getPage(i);
           const diff = SuiSqlBinaryPatch.binaryDiff(page1, page2);
+          console.log("patch", diff);
           patchParts.push(new Uint8Array([1]));
           patchParts.push(int32ToUint8ArrayBE(i));
           patchParts.push(int32ToUint8ArrayBE(diff.length));
@@ -69,15 +110,6 @@ class SuiSqliteBinaryView {
   async getPageSha256(pageNumber) {
     const digest = await globalThis.crypto.subtle.digest("SHA-256", this.getPage(pageNumber));
     return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  }
-  async getPageWalrusBlobId(pageNumber) {
-    if (!this.walrusClient) {
-      return null;
-    }
-    const pageSize = this.getPageSize();
-    const offset = pageNumber * pageSize;
-    const { blobId } = await this.walrusClient.encodeBlob(this.getPage(pageNumber));
-    return blobId;
   }
   checkHeaderIsOk() {
     const header = this.binary.slice(0, 16);

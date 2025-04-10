@@ -1,4 +1,4 @@
-module suisql::events {
+module suisql::suisql_events {
     use sui::event;
     use std::ascii::{String};
 
@@ -17,15 +17,18 @@ module suisql::events {
     public struct NewDBEvent has copy, drop {
         id: address,
         name: std::ascii::String,
+        write_cap_id: address,
     }
 
     public(package) fun emit_new_db_event(
         id: &object::ID,
         name: std::ascii::String,
+        write_cap_id: &object::ID,
     ) {
         event::emit(NewDBEvent {
             id: object::id_to_address(id),
             name: name,
+            write_cap_id: object::id_to_address(write_cap_id),
         })
     }
 

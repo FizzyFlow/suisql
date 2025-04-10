@@ -1,4 +1,4 @@
-import type SuiSql from "./SuiSql";
+import SuiSql from "./SuiSql";
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
 import type { SuiSqlOwnerType } from "./SuiSqlBlockchain";
@@ -6,22 +6,31 @@ import type { SuiSqlOwnerType } from "./SuiSqlBlockchain";
 // import { Transaction } from "@mysten/sui/transactions";
 // import { bcs } from '@mysten/sui/bcs';
 
-import { compress, decompress } from "./SuiSqlUtils";
+import { compress, decompress, concatUint8Arrays } from "./SuiSqlUtils";
 import { maxBinaryArgumentSize, maxMoveObjectSize } from "./SuiSqlConsts";
 // import { packages } from "./SuiSqlConsts";
 
 import SuiSqlBlockchain from "./SuiSqlBlockchain";
 import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain";
 
+import SuiSqlWalrus from "./SuiSqlWalrus";
+
+import SuiSqlLog from './SuiSqlLog';
+
+import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus';
+
 type SuiSqlSyncParams = {
     suiSql: SuiSql,
     id?: string,
     name?: string,
     suiClient: SuiClient,
-    walrusSuiClient?: SuiClient,
+    walrusClient?: SuiSqlWalrusWalrusClient,
     signer?: Signer,
+    currentWalletAddress?: string,
     signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction,
     network?: string, // sui network, walrus network may be different (always testnet for now)
+
+    walrusWasmUrl?: string,      // need it for blobId calculation, if no walrusClient is provided
 };
 
 export default class SuiSqlSync {
@@ -32,7 +41,9 @@ export default class SuiSqlSync {
     private owner?: SuiSqlOwnerType;
 
     private suiSql: SuiSql;
+
     private suiClient: SuiClient;
+    
     private syncedAt: number | null = null;
 
     private patchesTotalSize: number = 0;   // keep track of total size of patches, 
@@ -41,6 +52,7 @@ export default class SuiSqlSync {
     public network: string = 'local';
 
     public chain?: SuiSqlBlockchain;
+    public walrus?: SuiSqlWalrus;
 
     constructor(params: SuiSqlSyncParams) {
         this.suiSql = params.suiSql;
@@ -57,12 +69,28 @@ export default class SuiSqlSync {
         }
 
         this.chain = new SuiSqlBlockchain({
-                signer: params.signer,
-                signAndExecuteTransaction: params.signAndExecuteTransaction,
-                network: this.network, 
                 suiClient: this.suiClient,
-                walrusSuiClient: params.walrusSuiClient,
+                signer: params.signer,
+
+                signAndExecuteTransaction: params.signAndExecuteTransaction,
+                currentWalletAddress: params.currentWalletAddress,
+
+                network: this.network, 
             });
+
+        if (params.walrusClient) {
+            this.walrus = new SuiSqlWalrus({
+                walrusClient: params.walrusClient,
+                signer: params.signer,
+                walrusWasmUrl: params.walrusWasmUrl,
+            });
+        } else {
+            this.walrus = new SuiSqlWalrus({
+                network: this.network,
+                signer: params.signer,
+                walrusWasmUrl: params.walrusWasmUrl,
+            });
+        }
     }
 
     get syncedAtDate() {
@@ -137,9 +165,9 @@ export default class SuiSqlSync {
         const id = (this.id as string);
         const fields = await this.chain.getFields(id);
 
-        if (fields.walrus) {
+        if (fields.walrusBlobId) {
             // console.error(fields.walrus);
-            await this.loadFromWalrus(fields.walrus);
+            await this.loadFromWalrus(fields.walrusBlobId);
         }
 
         if (fields.owner) {
@@ -165,27 +193,50 @@ export default class SuiSqlSync {
 
         const syncedAtBackup = this.syncedAt;
 
-        const patch = await this.getPatch();
+        const sqlPatch = await this.getPatch();
+        const binaryPatch = await this.suiSql.getBinaryPatch();
+
+        SuiSqlLog.log('binaryPatch', binaryPatch);
+
+        let selectedPatch = sqlPatch;
+        let patchTypeByte = 1;
+        if (binaryPatch && binaryPatch.length < sqlPatch.length + 200) {
+            selectedPatch = binaryPatch;
+            patchTypeByte = 2;
+        }
+
         let walrusShouldBeForced = false;
-        if (patch.length > maxBinaryArgumentSize) {
+        if (selectedPatch.length > maxBinaryArgumentSize) {
             // can not pass as pure argument, lets use walrus
             walrusShouldBeForced = true;
-        } else if (this.patchesTotalSize + patch.length > maxMoveObjectSize) {
+        } else if (this.patchesTotalSize + selectedPatch.length > maxMoveObjectSize) {
             // sui object is too large, need to clamp it with walrus blob
             walrusShouldBeForced = true;
         }
 
+        const expectedBlobId = await this.suiSql.getExpectedBlobId();
+        SuiSqlLog.log('expectedBlobId', expectedBlobId);
+        SuiSqlLog.log('expectedBlobId', expectedBlobId);
+        SuiSqlLog.log('expectedBlobId', expectedBlobId);
+        SuiSqlLog.log('expectedBlobId', expectedBlobId);
+
+        // const expectedBlobId2 = await this.suiSql.getExpectedBlobId();
+        // const expectedBlobId3 = await this.suiSql.getExpectedBlobId();
+        // const expectedBlobId4 = await this.suiSql.getExpectedBlobId();
+        // SuiSqlLog.log('expectedBlobId', expectedBlobId);
 
         let success = false;
         if (forceWalrus || walrusShouldBeForced) {
-            const full = await this.getFull();
-            if (full) {
-                this.syncedAt = Date.now();
-                success = await this.chain.saveFull(this.id, full);
-            }
+            // const full = await this.getFull();
+            // if (full) {
+            //     this.syncedAt = Date.now();
+            //     success = await this.chain.saveFull(this.id, full);
+            // }
         } else {
+            SuiSqlLog.log('saving patch', (patchTypeByte == 1 ? 'sql' : 'binary'), 'bytes:', selectedPatch.length);
+
             this.syncedAt = Date.now();
-            success = await this.chain.savePatch(this.id, patch);
+            success = await this.chain.savePatch(this.id, concatUint8Arrays([new Uint8Array([patchTypeByte]), selectedPatch]), expectedBlobId ? expectedBlobId : undefined);
         }
 
         console.log('success', success, this.syncedAt);
@@ -199,8 +250,50 @@ export default class SuiSqlSync {
         }
     }
 
+    async fillExpectedWalrus() {
+        if (!this.walrus || !this.chain) {
+            return;
+        }
+
+        const systemObjectId = await this.walrus.getSystemObjectId();
+
+        if (!systemObjectId) {
+            throw new Error('can not get walrus system object id from walrusClient');
+        }
+
+        const id = (this.id as string);
+        const fields = await this.chain.getFields(id);
+
+        if (fields.expectedWalrusBlobId) {
+            const currentExpectedBlobId = await this.suiSql.getExpectedBlobId();
+            if (currentExpectedBlobId == fields.expectedWalrusBlobId) {
+                // looks ok
+                const full = await this.getFull();
+                if (!full) {
+                    throw new Error('can not get full db');
+                }
+
+                const status = await this.walrus.write(full);
+                if (!status) {
+                    throw new Error('can not write to walrus');
+                }
+
+                const blobObjectId = status.blobObjectId;
+
+                const success = await this.chain.fillExpectedWalrus(id, blobObjectId, systemObjectId);
+
+                return success;
+
+            } else {
+                throw new Error('expected walrus blob id does not match current state of the db');
+            }
+        } else {
+            throw new Error('db is not expecting any walrus clamp');
+        }    
+    }
+
     async loadFromWalrus(walrusBlobId: string) {
-        const data = await this.chain?.getFull(walrusBlobId);
+        const data = await this.walrus?.read(walrusBlobId);
         console.error('loaded from walrus', data);
         if (data) {
             this.suiSql.replace(data);
@@ -212,16 +305,31 @@ export default class SuiSqlSync {
             return false;
         }
 
-        const decompressed = await decompress(patch);
-        const list = JSON.parse( (new TextDecoder()).decode(decompressed) );
+        // first byte is patch type
+        // 1 - pure sql, 2 - binary patch
+        const patchType = patch[0];
+        const remainingPatch = patch.slice(1);
 
-        for (const item of list) {
-            try {
-                this.suiSql.db.run(item.sql);
-            } catch (e) {
-                console.error(e);
+        SuiSqlLog.log(patch, 'applyPatch', (patchType == 1 ? 'sql' : 'binary'), 'bytes:', remainingPatch.length);
+
+        if (patchType == 1) {
+            // pure sql
+            const decompressed = await decompress(remainingPatch);
+            const list = JSON.parse( (new TextDecoder()).decode(decompressed) );
+
+            for (const item of list) {
+                try {
+                    this.suiSql.db.run(item.sql);
+                } catch (e) {
+                    console.error(e);
+                }
             }
+        } else if (patchType == 2) {
+            // binary patch
+            const success = await this.suiSql.applyBinaryPatch(remainingPatch);
+            SuiSqlLog.log('binary patch applied', success);
         }
+
 
         return true;
     }

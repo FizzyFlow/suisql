@@ -1,4 +1,5 @@
 import pako from 'pako';
+import { bcs } from '@mysten/sui/bcs';
 
 /**
  * Compress Uint8Array
@@ -87,6 +88,29 @@ const extractTopLevelParenthesesText = (str: string): Array<string> => {
 const int32ToUint8ArrayBE = (num: number) => Uint8Array.from([num >>> 24, num >>> 16 & 0xff, num >>> 8 & 0xff, num & 0xff]);
 
 
+const bigintToUint8Array = (bigint: bigint) =>{
+    return bcs.u256().serialize(bigint).toBytes();
+}
+
+const idTo64 = (id: bigint | number | string) => {
+    const asA = Array.from( bigintToUint8Array(BigInt(id)) );
+    let base64String = btoa(String.fromCharCode.apply(null, asA));
+    return base64String.replaceAll("/", "_").replaceAll("+", "-").replaceAll("=", "");
+}
+
+const walrus64ToBigInt = (v: string) => {
+    const base64 = v.replaceAll("_", "/").replaceAll("-", "+");
+    const raw = atob(base64);
+    // const rawLength = raw.length;
+    const hex: string[] = [];
+    raw.split('').forEach(function (ch) {
+        var h = ch.charCodeAt(0).toString(16);
+        if (h.length % 2) { h = '0' + h; }
+        hex.unshift(h);
+    });
+    return BigInt('0x' + hex.join(''));
+}
+
 const concatUint8Arrays = (arrays: Uint8Array[]) => {
     const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
     const result = new Uint8Array(totalLength);
@@ -98,6 +122,28 @@ const concatUint8Arrays = (arrays: Uint8Array[]) => {
     return result;
 };
 
+function blobIdFromInt(blobId: bigint | string): string {
+	return bcs
+		.u256()
+		.serialize(blobId)
+		.toBase64()
+		.replace(/=*$/, '')
+		.replaceAll('+', '-')
+		.replaceAll('/', '_');
+}
+
+function blobIdFromBytes(blobId: Uint8Array): string {
+	return blobIdFromInt(bcs.u256().parse(blobId));
+}
+
+function blobIdIntFromBytes(blobId: Uint8Array): bigint {
+    return BigInt(bcs.u256().parse(blobId));
+}
+
+function blobIdToInt(blobId: string): bigint {
+	return BigInt(bcs.u256().fromBase64(blobId.replaceAll('-', '+').replaceAll('_', '/')));
+}
+
 export { 
     anyShallowCopy, 
     isSureWriteSql, 
@@ -105,5 +151,13 @@ export {
     decompress,
     getFieldsFromCreateTableSql,
     int32ToUint8ArrayBE,
+    bigintToUint8Array,
+    idTo64,
+    walrus64ToBigInt,
     concatUint8Arrays,
+
+    blobIdFromInt,
+    blobIdFromBytes,
+    blobIdToInt,
+    blobIdIntFromBytes,
 };

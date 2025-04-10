@@ -51,8 +51,8 @@ class SuiSqlLibrarian {
     }
   }
   async loadScript() {
-    if (window.initSqlJs) {
-      return window.initSqlJs;
+    if (window["initSqlJs"]) {
+      return window["initSqlJs"];
     }
     const promise = new Promise((res) => {
       const imported = document.createElement("script");
@@ -60,7 +60,7 @@ class SuiSqlLibrarian {
       imported.setAttribute("type", "text/javascript");
       document.head.appendChild(imported);
       imported.onload = () => {
-        res(window.initSqlJs);
+        res(window["initSqlJs"]);
       };
     });
     return await promise;

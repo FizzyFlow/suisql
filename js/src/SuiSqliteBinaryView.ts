@@ -4,24 +4,48 @@ type SuiSqliteBinaryViewParams = {
     binary: Uint8Array,
 };
 
-import { WalrusClient } from '@mysten/walrus';
+// import { WalrusClient } from '@mysten/walrus';
 
-import { int32ToUint8ArrayBE, concatUint8Arrays, compress, decompress } from './SuiSqlUtils';
+import { int32ToUint8ArrayBE, concatUint8Arrays, compress, decompress, blobIdToInt, blobIdFromBytes } from './SuiSqlUtils';
 import SuiSqlBinaryPatch from './SuiSqlBinaryPatch';
+
+import SuiSqlWalrus from './SuiSqlWalrus';
+
+// import { BlobEncoder } from '@mysten/walrus-wasm';
+// import { bcs } from '@mysten/sui/bcs';
+
+// export const BcsEncodingType = bcs
+// 	.enum('EncodingType', {
+// 		RedStuff: null,
+// 		RS2: null,
+// 	})
+// 	.transform({
+// 		input: (
+// 			encodingType:
+// 				| { RedStuff: boolean | object | null }
+// 				| { RS2: boolean | object | null }
+// 				| 'RedStuff'
+// 				| 'RS2',
+// 		) =>
+// 			typeof encodingType === 'string'
+// 				? ({ [encodingType]: null } as Exclude<typeof encodingType, string>)
+// 				: encodingType,
+// 		output: (encodingType) => encodingType,
+// 	});
 
 export default class SuiSqliteBinaryView {
     public binary: Uint8Array;
-    private walrusClient?: WalrusClient;
+    // private walrusClient?: WalrusClient;
     createdAt?: number;
 
     constructor(params: SuiSqliteBinaryViewParams) {
         // note that SuiSqliteBinaryView expected to have Uint8Array of initialized buffer, not a subset of it
         this.binary = Uint8Array.from(params.binary);
 
-        this.walrusClient = new WalrusClient({
-            network: 'testnet',
-            suiRpcUrl: 'https://fullnode.testnet.sui.io:443',
-        });
+        // this.walrusClient = new WalrusClient({
+        //     network: 'testnet',
+        //     suiRpcUrl: 'https://fullnode.testnet.sui.io:443',
+        // });
 
         this.createdAt = Date.now();
     }
@@ -30,7 +54,7 @@ export default class SuiSqliteBinaryView {
         const decompressed = await decompress(binaryPatch);
         const pageSize = this.getPageSize();
 
-        let maxPageNumber = 0;
+        let maxPageNumber = this.getPagesCount() - 1;
 
         const pages: { [key: number]: Uint8Array } = {};
 
@@ -71,6 +95,7 @@ export default class SuiSqliteBinaryView {
                 pages[pageNumber] = patched;
             }
         }
+
 
         const ret = [];
         for (let i = 0; i <= maxPageNumber; i++) {
@@ -155,19 +180,6 @@ export default class SuiSqliteBinaryView {
     async getPageSha256(pageNumber: number) {
         const digest = await globalThis.crypto.subtle.digest("SHA-256", this.getPage(pageNumber));
         return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('');
-    }
-
-    async getPageWalrusBlobId(pageNumber: number) {
-        if (!this.walrusClient) {
-            return null;
-        }
-
-        const pageSize = this.getPageSize();
-        const offset = pageNumber * pageSize;
-
-        const {blobId} = await this.walrusClient.encodeBlob(this.getPage(pageNumber));
-
-        return blobId;
     }
 
     checkHeaderIsOk() {

@@ -1,4 +1,4 @@
-import initSqlJs from 'sql.js';
+// import initSqlJs from 'sql.js';
 import SuiSqlStatement from './SuiSqlStatement';
 import SuiSqlSync from './SuiSqlSync';
 
@@ -18,15 +18,23 @@ import SuiSqliteBinaryView from './SuiSqliteBinaryView';
 
 import SuiSqlLog from './SuiSqlLog';
 
+import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus';
+
 type SuiSqlParams = {
+    debug?: boolean,
+
     id?: string,
     name?: string,
+
+    network?: string, // sui network, walrus network may be different (always testnet for now)
+
     suiClient?: SuiClient,
-    debug?: boolean,
-    walrusSuiClient?: SuiClient,
     signer?: Signer,
     signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction,
-    network?: string, // sui network, walrus network may be different (always testnet for now)
+    currentWalletAddress?: string,
+
+    walrusClient?: SuiSqlWalrusWalrusClient,
+    walrusWasmUrl?: string,      // need it for blobId calculation, if no walrusClient is provided
 };
 
 enum State {
@@ -58,6 +66,7 @@ export default class SuiSql {
     public mostRecentWriteChangeTime?: number; // time at which the most recent write operation was done
 
     public binaryView?: SuiSqliteBinaryView;
+    public initialBinaryView?: SuiSqliteBinaryView;
 
     constructor(params: SuiSqlParams) {
         // this._SQL = null;
@@ -86,11 +95,13 @@ export default class SuiSql {
                     id: this.id,
                     name: this.name,
                     suiClient: this.suiClient,
-                    walrusSuiClient: params.walrusSuiClient,
                     signer: params.signer,
                     signAndExecuteTransaction: params.signAndExecuteTransaction,
+                    currentWalletAddress: params.currentWalletAddress,
                     suiSql: this,
                     network: params.network,
+
+                    walrusClient: params.walrusClient,
                 });
             }
         }
@@ -114,6 +125,35 @@ export default class SuiSql {
         }
 
         return null;
+    }
+
+    async getBinaryPatch(): Promise<Uint8Array | null> {
+        const currentBinaryView = this.getBinaryView();
+        if (this.initialBinaryView && currentBinaryView) {
+            const binaryPatch = await currentBinaryView.getBinaryPatch(this.initialBinaryView);
+            return binaryPatch;
+        }
+        return null;
+    }
+
+    async getExpectedBlobId(): Promise<bigint | null> {
+        const data = this.export();
+        if (data && this.sync && this.sync.walrus) {
+            return await this.sync.walrus.calculateBlobId(data);
+        }
+        return null;
+    }
+
+    async applyBinaryPatch(binaryPatch: Uint8Array) {
+        const currentBinaryView = this.getBinaryView();
+        if (!currentBinaryView) {
+            return false;
+        }
+
+        const patched = await currentBinaryView.getPatched(binaryPatch);
+        this.replace(patched);
+
+        return true;
     }
 
     async database(idOrName: string) {
@@ -147,6 +187,11 @@ export default class SuiSql {
 
     replace(data: Uint8Array) {
         if (this.librarian.isReady) {
+            this.binaryView = undefined;
+            this.initialBinaryView = new SuiSqliteBinaryView({
+                binary: data,
+            });;
+
             this._db = this.librarian.fromBinarySync(data);
             this.mostRecentWriteChangeTime = Date.now();
 
@@ -193,6 +238,14 @@ export default class SuiSql {
                             // SuiSqlLog.log('database is synced from the blockchain');
 
                             this.state = State.OK;
+                        }
+
+                        // make a binary view of the database to calculate binary patches later
+                        const data = this.export();
+                        if (data) {
+                            this.initialBinaryView = new SuiSqliteBinaryView({
+                                binary: data,
+                            });
                         }
                     }
                 }

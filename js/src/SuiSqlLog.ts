@@ -12,9 +12,8 @@ export default class SuiSqlLog  {
 			return;
 		}
 
-		let prefix = 'SuiSql';
+		let prefix = 'SuiSql | ';
 
-		args.unshift(this.constructor.name+' |');
 		args.unshift(prefix);
 		console.info.apply(null, args);
 	}
