@@ -110,7 +110,7 @@ There are two ways to connect to Walrus inside the library:
 
 Walrus methods can be mixed together, you can use aggregatorUrl for read operations and walrusClient for sync writes. Moreover, for small test databases, SuiSQL will work ok without Walrus params at all (fitting everything in the Sui object).
 
-Additional way to sync database to Walrus implemented in SuiSQL is the delayed Walrus sync.
+Additional way to sync database to Walrus implemented in SuiSQL is the [delayed Walrus sync](#delayed-walrus-sync).
 
 ### Methods
 
@@ -197,14 +197,14 @@ Syncs the current in-memory SQLite database state to the Sui blockchain and (if 
 
 The library will automatically determine the most efficient sync method:
 
-    - Compressed SQL statements
-    - Binary memory patches
-    - Full Walrus snapshot
+- Compressed SQL statements
+- Binary memory patches
+- Full Walrus snapshot
 
 You can override or enhance that behavior using optional flags:
 
 - forceWalrus `boolean` Force full Walrus sync, even if not required by size or structure
-- forceExpectWalrus `boolean` Performs calculations for delayed Walrus sync during normal sync flow
+- forceExpectWalrus `boolean` Performs calculations for [delayed Walrus sync](#delayed-walrus-sync) during normal sync flow
 
 ```javascript
 await db.query(`
