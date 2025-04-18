@@ -4,20 +4,7 @@
 import { execSync } from 'child_process';
 import { existsSync, promises as fs } from 'fs';
 import * as path from 'path';
-// import type { BuildOptions } from 'esbuild';
 import { build } from 'esbuild';
-
-// interface PackageJSON {
-// 	name?: string;
-// 	type?: 'module' | 'commonjs';
-// 	exports?: Record<string, string | Record<string, string>>;
-// 	files?: string[];
-// 	types?: string;
-// 	import?: string;
-// 	main?: string;
-// 	private?: boolean;
-// 	sideEffects?: boolean;
-// }
 
 const ignorePatterns = [/\.test.ts$/, /\.graphql$/];
 
@@ -170,7 +157,6 @@ async function buildImportDirectories({ exports, sideEffects }) {
     }
 
     await addPackageFiles([...exportDirs]);
-    // await addIgnoredWorkspaces(ignoredWorkspaces);
 }
 
 async function createEmptyDir(path) {
@@ -206,24 +192,6 @@ async function addPackageFiles(paths) {
         path.join(process.cwd(), 'package.json'),
         `${JSON.stringify(json, null, '\t')}\n`,
     );
-}
-
-async function addIgnoredWorkspaces(paths) {
-    const file = await fs.readFile(path.join(process.cwd(), '../../pnpm-workspace.yaml'), 'utf-8');
-    const lines = file.split('\n').filter(Boolean);
-    let changed = false;
-
-    for (const path of paths) {
-        if (!lines.find((line) => line.includes(`!${path}`))) {
-            changed = true;
-            lines.push(`  - '!${path}'`);
-        }
-    }
-
-    if (changed) {
-        lines.push('');
-        await fs.writeFile(path.join(process.cwd(), '../../pnpm-workspace.yaml'), lines.join('\n'));
-    }
 }
 
 
