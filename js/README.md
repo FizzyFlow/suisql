@@ -7,10 +7,15 @@ It brings the power and familiarity of SQL relational databases into the world o
 ### Features
 
 ✅ SQLite-compatible — full-featured SQL engine (joins, filters, indexes)
+
 🪙 Decentralized storage — no backend required, data lives on-chain and on Walrus
+
 🔐 On-chain proofs — all write operations can be verified and audited
+
 🧠 Smart syncing — compressed SQL, binary patches, or full snapshots
+
 🆓 Free reads — anyone can read or clone the database without gas. Higher-layer encryption is possible but not built-in
+
 ⚙️ Easy to integrate — drop-in library for apps, games, dashboards, DAOs
 
 ### Architecture
