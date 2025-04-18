@@ -182,6 +182,7 @@ export default class SuiSqlBlockchain {
         };
     }
 
+
     // async getFull(walrusBlobId: string) {
     //     return await this.walrus?.read(walrusBlobId);
     // }
@@ -240,6 +241,44 @@ export default class SuiSqlBlockchain {
     //     // }
     //     // return false;
     // }
+
+    async clampWithWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string) {
+        const packageId = await this.getPackageId();
+
+        if (!packageId || !this.suiClient) {
+            throw new Error('no packageId or no signer');
+        }
+
+        const writeCapId = await this.getWriteCapId(dbId);
+
+        if (!writeCapId) {
+            throw new Error('no writeCapId');
+        }
+
+        const tx = new Transaction();
+        const target = ''+packageId+'::suisql::clamp_with_walrus';
+
+        const args = [
+            tx.object(dbId),
+            tx.object(writeCapId),
+            tx.object(walrusSystemAddress),
+            tx.object(blobAddress),
+        ];
+
+        tx.moveCall({ 
+                target, 
+                arguments: args, 
+                typeArguments: [], 
+            });
+        
+        try {
+            const txResults = await this.executeTx(tx);
+            return true;
+        } catch (e) {
+            console.error('fillExpectedWalrus error', e);
+            return false;
+        }
+    }
 
     async fillExpectedWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string) {
         const packageId = await this.getPackageId();
@@ -317,23 +356,6 @@ export default class SuiSqlBlockchain {
             console.error('savePatch error', e);
             return false;
         }
-
-        // const result = await this.suiClient.signAndExecuteTransaction({ 
-        //         signer: this.signer, 
-        //         transaction: tx,
-        //     });
-        // if (result && result.digest) {
-        //     try {
-        //         await this.suiClient.waitForTransaction({
-        //             digest: result.digest,
-        //         });
-
-        //         return true;
-        //     } catch (_) {
-        //         return false;
-        //     }
-        // }
-        // return false;
     }
 
     async getDbId(name: string) {
@@ -402,26 +424,9 @@ export default class SuiSqlBlockchain {
                 typeArguments: [], 
             });
 
-        // tx.setSenderIfNotSet(this.signer.toSuiAddress());
-        // const transactionBytes = await tx.build({ client: this.suiClient });
-
         let createdDbId = null;
 
         const txResults = await this.executeTx(tx);
-
-        // const result = await this.suiClient.signAndExecuteTransaction({ 
-        //     signer: this.signer, 
-        //     transaction: transactionBytes,
-        // });
-
-        // if (result && result.digest) {
-        //     const finalResults = await this.suiClient.waitForTransaction({
-        //         digest: result.digest,
-        //         options: {
-        //             showEffects: true,
-        //             showEvents: true,
-        //         },
-        //     });
 
         if (txResults && txResults.events && txResults.events.length) {
             for (const event of txResults.events) {

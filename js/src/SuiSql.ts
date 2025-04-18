@@ -2,6 +2,8 @@
 import SuiSqlStatement from './SuiSqlStatement';
 import SuiSqlSync from './SuiSqlSync';
 
+import type { SuiSqlSyncToBlobckchainParams } from './SuiSqlSync';
+
 // import type { Database, BindParams } from "sql.js";
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
@@ -23,18 +25,19 @@ import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus';
 type SuiSqlParams = {
     debug?: boolean,
 
-    id?: string,
-    name?: string,
+    id?: string,                            // id of the database, if not provided, name is used
+    name?: string,                          // name of the database, if no id is provided, SuiSql will look up for the database by name
 
-    network?: string, // sui network, walrus network may be different (always testnet for now)
+    network?: string, // 'testnet' | 'mainnet'
 
-    suiClient?: SuiClient,
-    signer?: Signer,
-    signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction,
-    currentWalletAddress?: string,
+    suiClient: SuiClient,                    // always needed, pass the one connected to needed network RPC
+    signer?: Signer,                          // for write operations (both for sui and walrus)
+    signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction, // for dApp, wrap wallet adapter signAndExecuteTransaction into this
+    currentWalletAddress?: string,            // address of the connected wallet for write operations (both for sui and walrus)
 
-    walrusClient?: SuiSqlWalrusWalrusClient,
-    walrusWasmUrl?: string,      // need it for blobId calculation, if no walrusClient is provided
+    walrusClient?: SuiSqlWalrusWalrusClient,  // optional, either walrusClient (to read) or walrusClient + signer (to read/write)
+    publisherUrl?: string,                    // or publisherUrl + currentWalletAddress ( to write )
+    aggregatorUrl?: string,                   // better specify this always, as it's faster to read from aggregator than from walrusClient
 };
 
 enum State {
@@ -51,7 +54,7 @@ export default class SuiSql {
 
     private suiClient?: SuiClient;
 
-    public sync?: SuiSqlSync;
+    public suiSqlSync?: SuiSqlSync;
     public state: State = State.INITIALIZING;
     private statements: Array<SuiSqlStatement> = [];
     private _db: Database | null = null;
@@ -91,19 +94,27 @@ export default class SuiSql {
             this.suiClient = params.suiClient;
 
             if (this.id || this.name) {
-                this.sync = new SuiSqlSync({
+                this.suiSqlSync = new SuiSqlSync({
+                    suiSql: this,
+
                     id: this.id,
                     name: this.name,
+                    
                     suiClient: this.suiClient,
+                    
                     signer: params.signer,
                     signAndExecuteTransaction: params.signAndExecuteTransaction,
                     currentWalletAddress: params.currentWalletAddress,
-                    suiSql: this,
+                    
                     network: params.network,
 
                     walrusClient: params.walrusClient,
+                    publisherUrl: params.publisherUrl,
+                    aggregatorUrl: params.aggregatorUrl,
                 });
             }
+        } else {
+            throw new Error('SuiClient is required');
         }
     }
 
@@ -138,8 +149,8 @@ export default class SuiSql {
 
     async getExpectedBlobId(): Promise<bigint | null> {
         const data = this.export();
-        if (data && this.sync && this.sync.walrus) {
-            return await this.sync.walrus.calculateBlobId(data);
+        if (data && this.suiSqlSync && this.suiSqlSync.walrus) {
+            return await this.suiSqlSync.walrus.calculateBlobId(data);
         }
         return null;
     }
@@ -157,6 +168,10 @@ export default class SuiSql {
     }
 
     async database(idOrName: string) {
+        if (!this.paramsCopy) {
+            return null;
+        }
+
         const paramsCopy = {...this.paramsCopy};
         if (idOrName.startsWith('0x')) {
             paramsCopy.id = idOrName;
@@ -217,11 +232,11 @@ export default class SuiSql {
             this._db = await this.librarian.fromBinary();
     
             try {
-                if (this.sync) {
-                    await this.sync.syncFromBlockchain();
+                if (this.suiSqlSync) {
+                    await this.suiSqlSync.syncFromBlockchain();
                     // that would also update this.state to OK in case there is something synced from the chain
     
-                    this.id = this.sync.id;
+                    this.id = this.suiSqlSync.id;
                     if (!this.id) {
                         SuiSqlLog.log('error initilizing');
 
@@ -230,7 +245,7 @@ export default class SuiSql {
                         SuiSqlLog.log('db id', this.id);
                         this.mostRecentWriteChangeTime = Date.now();
 
-                        if (this.sync.hasBeenCreated) {
+                        if (this.suiSqlSync.hasBeenCreated) {
                             SuiSqlLog.log('database is freshly created');
 
                             this.state = State.EMPTY;
@@ -261,6 +276,22 @@ export default class SuiSql {
         __initializationPromiseResolver(this.state);
 
         return this.state;
+    }
+
+    async sync(params?: SuiSqlSyncToBlobckchainParams) {
+        if (this.suiSqlSync) {
+            await this.suiSqlSync.syncToBlockchain(params);
+        } else {
+            throw new Error('not enough initialization params to sync');
+        }
+    }
+
+    async fillExpectedWalrus() {
+        if (this.suiSqlSync) {
+            await this.suiSqlSync.fillExpectedWalrus();
+        } else {
+            throw new Error('not enough initialization params to sync');
+        }
     }
 
     markAsOk() {

@@ -21,6 +21,8 @@
     "test": "vitest --testTimeout 90000"
   },
   "devDependencies": {
+    "@mysten/walrus": "^0.0.17",
+    "@types/form-data": "^2.5.2",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.13.10",
     "@types/pako": "^2.0.3",
@@ -54,9 +56,10 @@
   "dependencies": {
     "@mysten/bcs": "^1.5.0",
     "@mysten/sui": "^1.21.2",
-    "@mysten/walrus": "file:../../walrus-overload2",
+    "axios": "^1.8.4",
     "browserify-zlib": "^0.2.0",
     "dataloader": "^2.2.3",
+    "form-data": "^4.0.2",
     "pako": "^2.1.0",
     "sql.js": "^1.12.0",
     "suidouble": "^1.24.0",

@@ -1,5 +1,6 @@
 import SuiSqlStatement from './SuiSqlStatement';
 import SuiSqlSync from './SuiSqlSync';
+import type { SuiSqlSyncToBlobckchainParams } from './SuiSqlSync';
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
 import SuiSqlField from './SuiSqlField';
@@ -12,12 +13,13 @@ type SuiSqlParams = {
     id?: string;
     name?: string;
     network?: string;
-    suiClient?: SuiClient;
+    suiClient: SuiClient;
     signer?: Signer;
     signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction;
     currentWalletAddress?: string;
     walrusClient?: SuiSqlWalrusWalrusClient;
-    walrusWasmUrl?: string;
+    publisherUrl?: string;
+    aggregatorUrl?: string;
 };
 declare enum State {
     INITIALIZING = "INITIALIZING",
@@ -29,7 +31,7 @@ export default class SuiSql {
     id?: string;
     name?: string;
     private suiClient?;
-    sync?: SuiSqlSync;
+    suiSqlSync?: SuiSqlSync;
     state: State;
     private statements;
     private _db;
@@ -44,7 +46,7 @@ export default class SuiSql {
     getBinaryPatch(): Promise<Uint8Array | null>;
     getExpectedBlobId(): Promise<bigint | null>;
     applyBinaryPatch(binaryPatch: Uint8Array): Promise<boolean>;
-    database(idOrName: string): Promise<SuiSql>;
+    database(idOrName: string): Promise<SuiSql | null>;
     get db(): {
         close(): void;
         create_function(name: string, func: (...args: any[]) => any): /*elided*/ any;
@@ -93,6 +95,8 @@ export default class SuiSql {
     }[];
     replace(data: Uint8Array): boolean;
     initialize(): Promise<State>;
+    sync(params?: SuiSqlSyncToBlobckchainParams): Promise<void>;
+    fillExpectedWalrus(): Promise<void>;
     markAsOk(): void;
     /**
      * Execute an SQL query, ignoring the rows it returns.

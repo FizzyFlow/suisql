@@ -16,14 +16,18 @@ import type { WalrusClient } from '@mysten/walrus';
 
 import { blobIdIntFromBytes, blobIdToInt, blobIdFromInt } from './SuiSqlUtils';
 
+import axios from 'axios';
+
+
 export type SuiSqlWalrusWalrusClient = WalrusClient;
 
 type SuiSqlWalrusParams = {
     walrusClient?: WalrusClient,
+    currentWalletAddress?: string,
+    publisherUrl?: string,
+    aggregatorUrl?: string,
     signer?: Signer,
-    network?: string,
-
-    walrusWasmUrl?: string,      // need it for blobId calculation, if no walrusClient is provided
+    network?: string, // sui network, 'mainnet', 'testnet', 
 };
 
 
@@ -32,46 +36,68 @@ const N_SHARDS = 1000; // https://github.com/MystenLabs/ts-sdks/blob/main/packag
 
 export default class SuiSqlWalrus {
     private signer?: Signer;
-    private network: string = 'testnet';
 
     private walrusClient?: WalrusClient;
+    private currentWalletAddress?: string;
+
+    private publisherUrl?: string;
+    private aggregatorUrl?: string;
+
+    private canWrite: boolean = false;
+    private canRead: boolean = false;
 
     constructor(params: SuiSqlWalrusParams) {
-        // this.suiClient = params.suiClient;
         this.signer = params.signer;
+        this.currentWalletAddress = params.currentWalletAddress;
+        this.publisherUrl = params.publisherUrl;
+        this.aggregatorUrl = params.aggregatorUrl;
+        this.walrusClient = params.walrusClient;
 
-        // const walrusClient = new WalrusClient({
-        //     network: 'testnet',
-        //     suiClient: this.suiClient,
-        //     storageNodeClientOptions: {
-        //         fetch: (url, options) => {
-        //             console.log('fetching', url);
-        //             return fetch(url, options);
-        //         },
-        //         timeout: 60_000,
-        //     },
-        //     // packageConfig: {
-        //     //     packageId: '0x795ddbc26b8cfff2551f45e198b87fc19473f2df50f995376b924ac80e56f88b',
-        //     //     latestPackageId: '0x261b2e46428a152570f9ac08972d67f7c12d62469ccd381a51774c1df7a829ca',
-        //     //     systemObjectId: '0x98ebc47370603fe81d9e15491b2f1443d619d1dab720d586e429ed233e1255c1',
-        //     //     stakingPoolId: '0x20266a17b4f1a216727f3eef5772f8d486a9e3b5e319af80a5b75809c035561d',
-        //     //     walPackageId: '0x8190b041122eb492bf63cb464476bd68c6b7e570a4079645a8b28732b6197a82',
-        //     // },
-        // });
-
-        if (params.walrusClient) {
-            this.walrusClient = params.walrusClient;
-        } else if (params.network) {
-            this.network = params.network;
-            const rpcUrl = getFullnodeUrl(this.network as any);
-            // this.walrusClient = new WalrusClient({
-            //     network: (this.network as any),
-            //     suiRpcUrl: rpcUrl,
-            //     wasmUrl: params.walrusWasmUrl,
-            // });
-        } else {
-            throw new Error('No walrusClient or network provided for SuiSqlWalrus, can not initialize walrus connection');
+        if (!this.currentWalletAddress && this.signer) {
+            this.currentWalletAddress = this.signer.toSuiAddress();
         }
+
+        if (!this.walrusClient && params.network) {
+            if (!this.aggregatorUrl) {
+                // we can use aggregator
+                if (params.network == 'testnet') {
+                    this.aggregatorUrl = 'https://aggregator.walrus-testnet.walrus.space';
+                }
+            }
+            if (!this.publisherUrl && this.currentWalletAddress) {
+                // we can use publisher if we know current user address
+                if (params.network == 'testnet') {
+                    this.publisherUrl = 'https://publisher.walrus-testnet.walrus.space';
+                }
+            }
+        }
+
+        if (!this.publisherUrl && !this.signer && this.currentWalletAddress) {
+            // we need publisher, as we can't write with walrusClient without signer
+            if (params.network == 'testnet') {
+                this.publisherUrl = 'https://publisher.walrus-testnet.walrus.space';
+            }
+        }
+
+        this.canWrite = false;
+        if (this.walrusClient) {
+            this.canRead = true;
+            if (this.signer) {
+                this.canWrite = true;
+            }
+            if (this.publisherUrl && this.currentWalletAddress) {
+                this.canWrite = true;
+            }
+        } else {
+            if (this.publisherUrl && this.currentWalletAddress) {
+                this.canWrite = true;
+            }
+            if (this.aggregatorUrl) {
+                this.canRead = true;
+            }
+        }
+
+        SuiSqlLog.log('SuiSqlWalrus instance', params, 'canRead:', this.canRead, 'canWrite:', this.canWrite);
     }
 
     async getSystemObjectId(): Promise<string | null> {
@@ -109,19 +135,52 @@ export default class SuiSqlWalrus {
         return null;
     }
 
+    getCurrentAddress() {
+        if (this.signer) {
+            return this.signer.toSuiAddress();
+        }
+        if (this.currentWalletAddress) {
+            return this.currentWalletAddress;
+        }
+        return null;        
+    }
+
+    async writeToPublisher(data: Uint8Array) {
+        const form = new FormData();
+        form.append('file', new Blob([data]));
+        
+        const publisherUrl = this.publisherUrl+'/v1/blobs?deletable=true&send_object_to='+this.getCurrentAddress();
+        SuiSqlLog.log('writing blob to walrus via publisher', form);
+
+        const res = await axios.put(publisherUrl, data);
+
+        console.log('walrus publisher response', res);
+
+        if (res && res.data && res.data.newlyCreated && res.data.newlyCreated.blobObject && res.data.newlyCreated.blobObject.id) {
+            SuiSqlLog.log('success', res.data);
+            return {
+                blobId: res.data.newlyCreated.blobObject.blob_id,
+                blobObjectId: res.data.newlyCreated.blobObject.id,
+            };
+        }
+
+        throw new Error('Failed to write blob to walrus publisher');
+    }
+
     async write(data: Uint8Array): Promise<{ blobId: string, blobObjectId: string } | null> {
-        console.log(data, this.walrusClient, this.signer);
+        if (this.publisherUrl && this.currentWalletAddress) {
+            return await this.writeToPublisher(data);
+        }
         if (!this.walrusClient || !this.signer) {
             return null;
         }
 
-        SuiSqlLog.log('wrining blob to walrus', data);
-        console.log(data);
+        SuiSqlLog.log('writing blob to walrus', data);
 
         const { blobId, blobObject } = await this.walrusClient.writeBlob({
             blob: data,
             deletable: true,
-            epochs: 3,
+            epochs: 2,
             signer: this.signer,
             owner: this.signer.toSuiAddress(),
             attributes: undefined,
@@ -134,9 +193,23 @@ export default class SuiSqlWalrus {
         return { blobId, blobObjectId };
     }
 
+    async readFromAggregator(blobId: string): Promise<Uint8Array | null> {
+        const url = this.aggregatorUrl+"/v1/blobs/" + blobId;
+
+        SuiSqlLog.log('reading blob from walrus (Aggregator)', blobId);
+
+        const res = await axios.get(url, { responseType: 'arraybuffer' });
+
+        return new Uint8Array(res.data);
+    }
+
     async read(blobId: string): Promise<Uint8Array | null> {
         const asString = blobIdFromInt(blobId);
-        SuiSqlLog.log('reading blob from walrus', blobId, asString);
+        if (this.aggregatorUrl) {
+            return await this.readFromAggregator(asString);
+        }
+
+        SuiSqlLog.log('reading blob from walrus (SDK)', blobId, asString);
 
         const data = await this.walrusClient?.readBlob({ blobId: asString });
 

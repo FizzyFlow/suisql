@@ -102,15 +102,19 @@ class SuiSqlBlockchain {
       }
     });
     let patches = [];
-    let walrus = null;
+    let walrusBlobId = null;
+    let expectedWalrusBlobId = null;
     let owner = null;
     if (result?.data?.content) {
       const fields = result.data.content.fields;
       if (fields && fields.id && fields.id.id) {
         patches = fields.patches;
       }
-      if (fields && fields.walrus) {
-        walrus = fields.walrus;
+      if (fields && fields.walrus_blob_id) {
+        walrusBlobId = fields.walrus_blob_id;
+      }
+      if (fields && fields.expected_walrus_blob_id) {
+        expectedWalrusBlobId = fields.expected_walrus_blob_id;
       }
       if (result.data.owner) {
         owner = result.data.owner;
@@ -118,7 +122,8 @@ class SuiSqlBlockchain {
     }
     return {
       patches,
-      walrus,
+      walrusBlobId,
+      expectedWalrusBlobId,
       owner
     };
   }
@@ -170,6 +175,62 @@ class SuiSqlBlockchain {
   //     // }
   //     // return false;
   // }
+  async clampWithWalrus(dbId, blobAddress, walrusSystemAddress) {
+    const packageId = await this.getPackageId();
+    if (!packageId || !this.suiClient) {
+      throw new Error("no packageId or no signer");
+    }
+    const writeCapId = await this.getWriteCapId(dbId);
+    if (!writeCapId) {
+      throw new Error("no writeCapId");
+    }
+    const tx = new Transaction();
+    const target = "" + packageId + "::suisql::clamp_with_walrus";
+    const args = [
+      tx.object(dbId),
+      tx.object(writeCapId),
+      tx.object(walrusSystemAddress),
+      tx.object(blobAddress)
+    ];
+    tx.moveCall({
+      target,
+      arguments: args,
+      typeArguments: []
+    });
+    try {
+      const txResults = await this.executeTx(tx);
+      return true;
+    } catch (e) {
+      console.error("fillExpectedWalrus error", e);
+      return false;
+    }
+  }
+  async fillExpectedWalrus(dbId, blobAddress, walrusSystemAddress) {
+    const packageId = await this.getPackageId();
+    if (!packageId || !this.suiClient) {
+      throw new Error("no packageId or no signer");
+    }
+    const tx = new Transaction();
+    const target = "" + packageId + "::suisql::fill_expected_walrus";
+    console.log(dbId, walrusSystemAddress, blobAddress);
+    const args = [
+      tx.object(dbId),
+      tx.object(walrusSystemAddress),
+      tx.object(blobAddress)
+    ];
+    tx.moveCall({
+      target,
+      arguments: args,
+      typeArguments: []
+    });
+    try {
+      const txResults = await this.executeTx(tx);
+      return true;
+    } catch (e) {
+      console.error("fillExpectedWalrus error", e);
+      return false;
+    }
+  }
   async savePatch(dbId, patch, expectedWalrusBlobId) {
     const packageId = await this.getPackageId();
     if (!packageId || !this.suiClient) {

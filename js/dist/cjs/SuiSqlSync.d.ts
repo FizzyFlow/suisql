@@ -11,11 +11,16 @@ type SuiSqlSyncParams = {
     name?: string;
     suiClient: SuiClient;
     walrusClient?: SuiSqlWalrusWalrusClient;
+    publisherUrl?: string;
+    aggregatorUrl?: string;
     signer?: Signer;
     currentWalletAddress?: string;
     signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction;
     network?: string;
-    walrusWasmUrl?: string;
+};
+export type SuiSqlSyncToBlobckchainParams = {
+    forceWalrus?: boolean;
+    forceExpectWalrus?: boolean;
 };
 export default class SuiSqlSync {
     id?: string;
@@ -38,9 +43,11 @@ export default class SuiSqlSync {
      */
     hasUnsavedChanges(): boolean;
     syncFromBlockchain(): Promise<boolean>;
-    syncToBlockchain(forceWalrus?: boolean): Promise<boolean>;
+    syncToBlockchain(params?: SuiSqlSyncToBlobckchainParams): Promise<boolean>;
+    fillExpectedWalrus(): Promise<boolean | undefined>;
     loadFromWalrus(walrusBlobId: string): Promise<void>;
     applyPatch(patch: Uint8Array): Promise<boolean>;
+    applySqlPatch(patch: Uint8Array): Promise<boolean>;
     getFull(): Promise<Uint8Array<ArrayBufferLike> | null>;
     getPatch(): Promise<Uint8Array<ArrayBufferLike>>;
 }

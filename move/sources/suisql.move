@@ -108,6 +108,7 @@ module suisql::suisql {
         db.expected_walrus_blob_id = option::some(walrus_blob_id);
     }
 
+
     fun register_walrus_blob_reusing_storage(db: &mut SuiSqlDb, walrus_system_ref: &mut system::System, 
         blob_id: u256,
         root_hash: u256,
@@ -149,12 +150,8 @@ module suisql::suisql {
 
     public entry fun clamp_with_walrus(db: &mut SuiSqlDb, write_cap: &WriteCap, walrus_system_ref: &system::System, walrus_blob: blob::Blob, ctx: &mut TxContext) {
         assert_write_cap(db, write_cap);
-        assert_walrus_blob(&walrus_blob, walrus_system_ref);
 
-        replace_walrus_blob(db, walrus_blob, ctx);
-
-        db.patches = vector::empty();
-        db.expected_walrus_blob_id = option::none();
+        replace_walrus_blob(db, walrus_system_ref, walrus_blob, ctx);
     }
 
     public entry fun fill_expected_walrus(db: &mut SuiSqlDb, walrus_system_ref: &system::System, walrus_blob: blob::Blob, ctx: &mut TxContext) {
@@ -167,21 +164,25 @@ module suisql::suisql {
 
         assert_walrus_blob(&walrus_blob, walrus_system_ref);
 
-        replace_walrus_blob(db, walrus_blob, ctx);
+        replace_walrus_blob(db, walrus_system_ref, walrus_blob, ctx);
+    }
+
+    fun replace_walrus_blob(db: &mut SuiSqlDb, walrus_system_ref: &system::System, walrus_blob: blob::Blob, ctx: &mut TxContext) {
+        assert_walrus_blob(&walrus_blob, walrus_system_ref);
+
+        db.walrus_blob_id = option::some(blob::blob_id(&walrus_blob));
+
+        // if (option::is_some(&db.walrus_blob)) {
+        //     let old_blob = option::swap(&mut db.walrus_blob, walrus_blob);
+        //     shared_blob::new(old_blob, ctx); // share the old blob
+        // } else {
+        //     option::fill(&mut db.walrus_blob, walrus_blob);
+        // };
+
+        attach_walrus_blob_reusing_storage(db, walrus_system_ref, walrus_blob, ctx);
 
         db.patches = vector::empty();
         db.expected_walrus_blob_id = option::none();
-    }
-
-    fun replace_walrus_blob(db: &mut SuiSqlDb, walrus_blob: blob::Blob, ctx: &mut TxContext) {
-        db.walrus_blob_id = option::some(blob::blob_id(&walrus_blob));
-
-        if (option::is_some(&db.walrus_blob)) {
-            let old_blob = option::swap(&mut db.walrus_blob, walrus_blob);
-            shared_blob::new(old_blob, ctx); // share the old blob
-        } else {
-            option::fill(&mut db.walrus_blob, walrus_blob);
-        };
     }
 
     fun assert_write_cap(db: &SuiSqlDb, write_cap: &WriteCap) {
@@ -200,8 +201,61 @@ module suisql::suisql {
         // let certified_epoch = option::get_with_default(&blob_certified_epoch, 0);
         let end_epoch = blob::end_epoch(walrus_blob_ref);
 
-        if (end_epoch <= (current_epoch + 1)) {
+        if (end_epoch <= (current_epoch)) {
             abort EInvalidWalrusBlobExpiration
+        };
+    }
+
+    fun can_extend_walrus_blob(db: &SuiSqlDb, walrus_system_ref: & system::System, walrus_blob_ref: &blob::Blob): bool {
+        if (option::is_none(&db.walrus_blob)) {
+            return false
+        };
+        let cur_blob_ref = option::borrow(&db.walrus_blob);
+        if (blob::certified_epoch(cur_blob_ref).is_none() || !blob::is_deletable(cur_blob_ref)) {
+            // current blob is not certified or not deletable. How did it get here?
+             return false
+        };
+
+        let current_epoch = system::epoch(walrus_system_ref);
+        let end_epoch = blob::end_epoch(cur_blob_ref);
+
+        if (current_epoch >= end_epoch) {
+            // current blob is expired
+            return false
+        };
+
+        let new_blob_end_epoch = blob::end_epoch(walrus_blob_ref);
+        if (new_blob_end_epoch >= end_epoch) {
+            // old one doesn't have more storage
+            return false
+        };
+
+        if (storage_resource::size(blob::storage(cur_blob_ref)) != storage_resource::size(blob::storage(walrus_blob_ref))) {
+            // sizes don't match. In theory we can re-use larger storage, but as per our design, we are not expecting it to decrease
+            return false
+        };
+
+        true
+    }
+
+    fun attach_walrus_blob_reusing_storage(db: &mut SuiSqlDb, walrus_system_ref: &system::System, 
+        mut new_blob: blob::Blob, ctx: &mut TxContext) {
+        
+        if (can_extend_walrus_blob(db, walrus_system_ref, &new_blob)) {
+            let old_blob = option::extract(&mut db.walrus_blob);
+            let mut storage = system::delete_blob(walrus_system_ref, old_blob);
+            let new_blob_end_epoch = blob::end_epoch(&new_blob);
+            let extension_storage = storage_resource::split_by_epoch(&mut storage, new_blob_end_epoch, ctx);
+            system::extend_blob_with_resource(walrus_system_ref, &mut new_blob, extension_storage);
+            option::fill(&mut db.walrus_blob, new_blob);
+            storage_resource::destroy(storage); // old storage, may have something still?
+        } else {
+            if (option::is_some(&db.walrus_blob)) {
+                let old_blob = option::swap(&mut db.walrus_blob, new_blob);
+                shared_blob::new(old_blob, ctx); // share the old blob ( or better burn it? )
+            } else {
+                option::fill(&mut db.walrus_blob, new_blob);
+            };
         };
     }
 }

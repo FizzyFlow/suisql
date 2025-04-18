@@ -52,7 +52,7 @@ class SuiSql {
     __publicField(this, "id");
     __publicField(this, "name");
     __publicField(this, "suiClient");
-    __publicField(this, "sync");
+    __publicField(this, "suiSqlSync");
     __publicField(this, "state", "INITIALIZING" /* INITIALIZING */);
     __publicField(this, "statements", []);
     __publicField(this, "_db", null);
@@ -80,18 +80,22 @@ class SuiSql {
     if (params.suiClient) {
       this.suiClient = params.suiClient;
       if (this.id || this.name) {
-        this.sync = new import_SuiSqlSync.default({
+        this.suiSqlSync = new import_SuiSqlSync.default({
+          suiSql: this,
           id: this.id,
           name: this.name,
           suiClient: this.suiClient,
           signer: params.signer,
           signAndExecuteTransaction: params.signAndExecuteTransaction,
           currentWalletAddress: params.currentWalletAddress,
-          suiSql: this,
           network: params.network,
-          walrusClient: params.walrusClient
+          walrusClient: params.walrusClient,
+          publisherUrl: params.publisherUrl,
+          aggregatorUrl: params.aggregatorUrl
         });
       }
+    } else {
+      throw new Error("SuiClient is required");
     }
   }
   getBinaryView() {
@@ -118,8 +122,8 @@ class SuiSql {
   }
   async getExpectedBlobId() {
     const data = this.export();
-    if (data && this.sync && this.sync.walrus) {
-      return await this.sync.walrus.calculateBlobId(data);
+    if (data && this.suiSqlSync && this.suiSqlSync.walrus) {
+      return await this.suiSqlSync.walrus.calculateBlobId(data);
     }
     return null;
   }
@@ -133,6 +137,9 @@ class SuiSql {
     return true;
   }
   async database(idOrName) {
+    if (!this.paramsCopy) {
+      return null;
+    }
     const paramsCopy = { ...this.paramsCopy };
     if (idOrName.startsWith("0x")) {
       paramsCopy.id = idOrName;
@@ -182,16 +189,16 @@ class SuiSql {
       this.state = "EMPTY" /* EMPTY */;
       this._db = await this.librarian.fromBinary();
       try {
-        if (this.sync) {
-          await this.sync.syncFromBlockchain();
-          this.id = this.sync.id;
+        if (this.suiSqlSync) {
+          await this.suiSqlSync.syncFromBlockchain();
+          this.id = this.suiSqlSync.id;
           if (!this.id) {
             import_SuiSqlLog.default.log("error initilizing");
             this.state = "ERROR" /* ERROR */;
           } else {
             import_SuiSqlLog.default.log("db id", this.id);
             this.mostRecentWriteChangeTime = Date.now();
-            if (this.sync.hasBeenCreated) {
+            if (this.suiSqlSync.hasBeenCreated) {
               import_SuiSqlLog.default.log("database is freshly created");
               this.state = "EMPTY" /* EMPTY */;
             } else {
@@ -215,6 +222,20 @@ class SuiSql {
     }
     __initializationPromiseResolver(this.state);
     return this.state;
+  }
+  async sync(params) {
+    if (this.suiSqlSync) {
+      await this.suiSqlSync.syncToBlockchain(params);
+    } else {
+      throw new Error("not enough initialization params to sync");
+    }
+  }
+  async fillExpectedWalrus() {
+    if (this.suiSqlSync) {
+      await this.suiSqlSync.fillExpectedWalrus();
+    } else {
+      throw new Error("not enough initialization params to sync");
+    }
   }
   markAsOk() {
     this.state = "OK" /* OK */;

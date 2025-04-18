@@ -35,8 +35,9 @@ describe("set up empty db", () => {
         // });
 
         const db = new SuiSql({
-                name: 'new testdb 234433ffff22 2231232',
+                name: 'new testdb 234433ffff23122 2231232',
                 network: 'testnet',
+                aggregatorUrl: 'https://aggregator.walrus-testnet.walrus.space',
                 suiClient: suiMasterTestnet.client,
                 walrusClient: walrusClientMock,
                 signer: suiMasterTestnet.signer,
@@ -80,14 +81,16 @@ describe("set up empty db", () => {
             await db.sync.syncToBlockchain();
         }
 
-        // await db.run("UPDATE employees SET name = 'JACKSON_UPDATED' WHERE name = 'JACKSON';");
+        // await db.run("UPDATE employees SET name = 'GARFIELD_UPDATED' WHERE name = 'GARFIELD';");
 
         // console.log(await db.listTables());
         
 
         // // console.log( await db.describeTable('employees') );
 
-        // await db.sync.syncToBlockchain();
+        // await db.sync.syncToBlockchain({ 
+        //     forceExpectWalrus: true,
+        // });
 
         // await db.sync.fillExpectedWalrus();
 
