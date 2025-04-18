@@ -1,6 +1,6 @@
 {
-  "name": "suisql",
-  "version": "1.0.0",
+  "name": "@fizzyflow/suisql",
+  "version": "0.0.1",
   "description": "",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -21,7 +21,6 @@
     "test": "vitest --testTimeout 90000"
   },
   "devDependencies": {
-    "@mysten/walrus": "^0.0.17",
     "@types/form-data": "^2.5.2",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.13.10",
@@ -48,21 +47,18 @@
     "stylelint-prettier": "^5.0.2",
     "ts-node": "^10.9.2",
     "typedoc": "^0.26.6",
-    "typedoc-plugin-markdown": "^4.2.5",
+    "typedoc-plugin-markdown": "^4.6.2",
     "typescript": "^5.3.3",
     "vite": "^5.3.5",
+    "suidouble": "^1.24.0",
     "vitest": "^2.0.4"
   },
   "dependencies": {
+    "@mysten/walrus": "^0.0.17",
     "@mysten/bcs": "^1.5.0",
     "@mysten/sui": "^1.21.2",
     "axios": "^1.8.4",
-    "browserify-zlib": "^0.2.0",
-    "dataloader": "^2.2.3",
-    "form-data": "^4.0.2",
     "pako": "^2.1.0",
-    "sql.js": "^1.12.0",
-    "suidouble": "^1.24.0",
-    "valibot": "0.42.1"
+    "sql.js": "^1.12.0"
   }
 }

@@ -48,7 +48,7 @@ describe("set up empty db", () => {
         const state = await db.initialize();
 
 
-        expect(db.sync.hasUnsavedChanges()).toBeFalsy();
+        expect(db.hasUnsavedChanges()).toBeFalsy();
 
         // await db.sync.syncFromBlockchain();
 
@@ -76,9 +76,9 @@ describe("set up empty db", () => {
                 INSERT INTO employees VALUES (NULL,'ROOSEVELT','CPA',9,'1995-10-12',35000,NULL,1);
                 `);
     
-            expect(db.sync.hasUnsavedChanges()).toBeTruthy();
+            expect(db.hasUnsavedChanges()).toBeTruthy();
     
-            await db.sync.syncToBlockchain();
+            await db.syncToBlockchain();
         }
 
         // await db.run("UPDATE employees SET name = 'GARFIELD_UPDATED' WHERE name = 'GARFIELD';");

@@ -278,6 +278,13 @@ export default class SuiSql {
         return this.state;
     }
 
+    hasUnsavedChanges() {
+        if (this.suiSqlSync) {
+            return this.suiSqlSync.hasUnsavedChanges();
+        }
+        return false;
+    }
+
     async sync(params?: SuiSqlSyncToBlobckchainParams) {
         if (this.suiSqlSync) {
             await this.suiSqlSync.syncToBlockchain(params);
