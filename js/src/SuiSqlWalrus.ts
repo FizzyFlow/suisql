@@ -145,7 +145,7 @@ export default class SuiSqlWalrus {
         return null;        
     }
 
-    async writeToPublisher(data: Uint8Array) {
+    async writeToPublisher(data: Uint8Array): Promise<{ blobId: bigint, blobObjectId: string } | null> {
         const form = new FormData();
         form.append('file', new Blob([data]));
         
@@ -159,7 +159,7 @@ export default class SuiSqlWalrus {
         if (res && res.data && res.data.newlyCreated && res.data.newlyCreated.blobObject && res.data.newlyCreated.blobObject.id) {
             SuiSqlLog.log('success', res.data);
             return {
-                blobId: res.data.newlyCreated.blobObject.blob_id,
+                blobId: blobIdToInt(''+res.data.newlyCreated.blobObject.blobId),
                 blobObjectId: res.data.newlyCreated.blobObject.id,
             };
         }
@@ -167,7 +167,7 @@ export default class SuiSqlWalrus {
         throw new Error('Failed to write blob to walrus publisher');
     }
 
-    async write(data: Uint8Array): Promise<{ blobId: string, blobObjectId: string } | null> {
+    async write(data: Uint8Array): Promise<{ blobId: bigint, blobObjectId: string } | null> {
         if (this.publisherUrl && this.currentWalletAddress) {
             return await this.writeToPublisher(data);
         }
@@ -187,14 +187,16 @@ export default class SuiSqlWalrus {
         });
 
         const blobObjectId = blobObject.id.id;
+        const blobIdAsInt = blobIdToInt(blobId);
 
-        SuiSqlLog.log('walrus write success', blobId, blobObjectId);
+        SuiSqlLog.log('walrus write success', blobIdAsInt, blobObjectId);
 
-        return { blobId, blobObjectId };
+        return { blobId: blobIdAsInt, blobObjectId };
     }
 
     async readFromAggregator(blobId: string): Promise<Uint8Array | null> {
-        const url = this.aggregatorUrl+"/v1/blobs/" + blobId;
+        const asString = blobIdFromInt(blobId);
+        const url = this.aggregatorUrl+"/v1/blobs/" + asString;
 
         SuiSqlLog.log('reading blob from walrus (Aggregator)', blobId);
 
@@ -204,10 +206,11 @@ export default class SuiSqlWalrus {
     }
 
     async read(blobId: string): Promise<Uint8Array | null> {
-        const asString = blobIdFromInt(blobId);
         if (this.aggregatorUrl) {
-            return await this.readFromAggregator(asString);
+            return await this.readFromAggregator(blobId);
         }
+
+        const asString = blobIdFromInt(blobId);
 
         SuiSqlLog.log('reading blob from walrus (SDK)', blobId, asString);
 

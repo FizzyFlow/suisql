@@ -42,10 +42,23 @@ export default class SuiSql {
     binaryView?: SuiSqliteBinaryView;
     initialBinaryView?: SuiSqliteBinaryView;
     constructor(params: SuiSqlParams);
+    get network(): string | null;
+    /**
+     * DB Base Walrus Blob ID ( in base64 format, the one for urls )
+     */
+    get walrusBlobId(): string | null | undefined;
+    hasWriteAccess(): Promise<boolean>;
+    hasUnsavedChanges(): boolean;
+    unsavedChangesCount(): number;
     getBinaryView(): SuiSqliteBinaryView | null;
     getBinaryPatch(): Promise<Uint8Array | null>;
     getExpectedBlobId(): Promise<bigint | null>;
     applyBinaryPatch(binaryPatch: Uint8Array): Promise<boolean>;
+    listDatabases(callback?: Function): Promise<string[] | null>;
+    /**
+     * Initialize a database re-using configuration of the current one, so only the id or name is required
+     * @param idOrName suiSql database id or name
+     */
     database(idOrName: string): Promise<SuiSql | null>;
     get db(): {
         close(): void;
@@ -120,6 +133,7 @@ export default class SuiSql {
      * Run an sql text containing many sql queries, one by one, ignoring return data. Returns the count of processed queries.
      */
     iterateStatements(sql: string): Promise<number>;
+    touch(): Promise<boolean>;
     listTables(): Promise<(string | number | Uint8Array<ArrayBufferLike> | null)[]>;
     describeTable(tableName: string): Promise<SuiSqlField[]>;
     /**

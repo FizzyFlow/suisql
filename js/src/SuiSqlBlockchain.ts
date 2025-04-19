@@ -445,6 +445,54 @@ export default class SuiSqlBlockchain {
         return createdDbId;
     }
 
+    async listDatabases(callback?: Function): Promise<Array<string>> {
+        const packageId = await this.getPackageId();
+        const bankId = await this.getBankId();
+
+        if (!packageId || !bankId || !this.suiClient) {
+            throw new Error('no bankId or packageId or no suiClient');
+        }
+
+        //1st, get bank object
+        const resp = await this.suiClient.getObject({
+            id: bankId,
+            options: {
+                showContent: true,
+            }
+        });
+        const mapId = (resp.data?.content as any)?.fields?.map?.fields?.id?.id;
+
+        let cursor = null;
+        let hasNextPage = false;
+        const ret = [];
+        do {
+            const resp = await this.suiClient.getDynamicFields({
+                parentId: mapId,
+            });
+            const thisRunRet = [];
+            for (const obj of resp.data) {
+                let name = obj.name.value;
+                // to get db object id we need to query dynamic field object content (obj.objectId)
+                // so we save some time, returning only names, which is enough for for SuiSql DB iniaitliazation
+                ret.push(''+name);
+                thisRunRet.push(''+name);
+            }
+
+            if (callback) {
+                await callback(thisRunRet);
+            }
+
+            if (resp && resp.hasNextPage) {
+                hasNextPage = true;
+                cursor = resp.nextCursor;
+            } else {
+                hasNextPage = false;
+            }
+        } while (hasNextPage);
+
+        return ret;
+    }
+
     getCurrentAddress() {
         if (!this.suiClient) {
             throw new Error('no suiClient');

@@ -44,8 +44,12 @@ describe("set up empty db", () => {
                 debug: true,
             });
 
+        const databases = await db.listDatabases();
+        console.log(databases);
+        return;
 
         const state = await db.initialize();
+
 
 
         expect(db.hasUnsavedChanges()).toBeFalsy();

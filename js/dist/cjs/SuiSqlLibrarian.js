@@ -37,7 +37,6 @@ var import_sql = __toESM(require("sql.js"));
 const isBrowser = Object.getPrototypeOf(
   Object.getPrototypeOf(globalThis)
 ) !== Object.prototype;
-console.log("isBrowser", isBrowser);
 class SuiSqlLibrarian {
   constructor() {
     __publicField(this, "isReady", false);

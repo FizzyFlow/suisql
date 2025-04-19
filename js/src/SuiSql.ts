@@ -118,6 +118,44 @@ export default class SuiSql {
         }
     }
 
+    get network() {
+        if (this.suiSqlSync) {
+            return this.suiSqlSync.network;
+        }
+        return null;
+    }
+
+    /**
+     * DB Base Walrus Blob ID ( in base64 format, the one for urls )
+     */
+    get walrusBlobId() {
+        if (this.suiSqlSync) {
+            return this.suiSqlSync.walrusBlobId;
+        }
+        return null;
+    }
+
+    async hasWriteAccess() {
+        if (this.suiSqlSync) {
+            return await this.suiSqlSync.hasWriteAccess();
+        }
+        return false;
+    }
+
+    hasUnsavedChanges() {
+        if (this.suiSqlSync) {
+            return this.suiSqlSync.hasUnsavedChanges();
+        }
+        return false;
+    }
+
+    unsavedChangesCount() {
+        if (this.suiSqlSync) {
+            return this.suiSqlSync.unsavedChangesCount();
+        }
+        return 0;
+    }
+
     getBinaryView() {
         if (!this.binaryView || 
             (this.binaryView && this.mostRecentWriteChangeTime &&
@@ -167,7 +205,18 @@ export default class SuiSql {
         return true;
     }
 
-    async database(idOrName: string) {
+    async listDatabases(callback?: Function) {
+        if (this.suiSqlSync && this.suiSqlSync.chain) {
+            return await this.suiSqlSync.chain.listDatabases(callback);
+        }
+        return null;
+    }
+
+    /**
+     * Initialize a database re-using configuration of the current one, so only the id or name is required
+     * @param idOrName suiSql database id or name
+     */
+    async database(idOrName: string): Promise<SuiSql | null> {
         if (!this.paramsCopy) {
             return null;
         }
@@ -256,8 +305,16 @@ export default class SuiSql {
                         }
 
                         // make a binary view of the database to calculate binary patches later
-                        const data = this.export();
+                        let data = this.export();
                         if (data) {
+                            if (data.length == 0) {
+                                await this.touch();
+                                const redata = this.export();
+                                if (redata) {
+                                    data = redata;
+                                }
+                            }
+
                             this.initialBinaryView = new SuiSqliteBinaryView({
                                 binary: data,
                             });
@@ -278,16 +335,20 @@ export default class SuiSql {
         return this.state;
     }
 
-    hasUnsavedChanges() {
-        if (this.suiSqlSync) {
-            return this.suiSqlSync.hasUnsavedChanges();
-        }
-        return false;
-    }
-
     async sync(params?: SuiSqlSyncToBlobckchainParams) {
         if (this.suiSqlSync) {
-            await this.suiSqlSync.syncToBlockchain(params);
+            const success = await this.suiSqlSync.syncToBlockchain(params);
+            if (success) {
+                this.binaryView = undefined;
+                const data = this.export();
+                if (data) {
+                    this.initialBinaryView = new SuiSqliteBinaryView({
+                        binary: data,
+                    });;
+                } else {
+                    this.initialBinaryView = undefined;
+                }
+            }
         } else {
             throw new Error('not enough initialization params to sync');
         }
@@ -398,6 +459,22 @@ export default class SuiSql {
         }
 
         return count;
+    }
+
+    async touch() {
+        if (!this.db) {
+            return false;
+        }
+
+        try {
+            const rawStatement = this.db.prepare("VACUUM;");
+            rawStatement.step();
+            rawStatement.free();
+        } catch (e) {
+            console.error(e);
+        }
+
+        return true;
     }
 
     async listTables() {

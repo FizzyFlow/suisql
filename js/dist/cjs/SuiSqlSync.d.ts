@@ -27,6 +27,7 @@ export default class SuiSqlSync {
     name?: string;
     hasBeenCreated: boolean;
     private owner?;
+    walrusBlobId?: string;
     private suiSql;
     private suiClient;
     private syncedAt;
@@ -34,7 +35,9 @@ export default class SuiSqlSync {
     network: string;
     chain?: SuiSqlBlockchain;
     walrus?: SuiSqlWalrus;
+    private canWrite?;
     constructor(params: SuiSqlSyncParams);
+    hasWriteAccess(): Promise<boolean>;
     get syncedAtDate(): Date | null;
     get ownerAddress(): string | null;
     unsavedChangesCount(): number;
@@ -49,6 +52,7 @@ export default class SuiSqlSync {
     applyPatch(patch: Uint8Array): Promise<boolean>;
     applySqlPatch(patch: Uint8Array): Promise<boolean>;
     getFull(): Promise<Uint8Array<ArrayBufferLike> | null>;
+    getPatchJSON(): Promise<string>;
     getPatch(): Promise<Uint8Array<ArrayBufferLike>>;
 }
 export {};

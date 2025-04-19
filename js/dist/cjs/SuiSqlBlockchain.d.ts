@@ -42,6 +42,7 @@ export default class SuiSqlBlockchain {
     savePatch(dbId: string, patch: Uint8Array, expectedWalrusBlobId?: bigint): Promise<boolean>;
     getDbId(name: string): Promise<any>;
     makeDb(name: string): Promise<any>;
+    listDatabases(callback?: Function): Promise<Array<string>>;
     getCurrentAddress(): string | null;
     executeTx(tx: Transaction): Promise<import("@mysten/sui/dist/cjs/client").SuiTransactionBlockResponse | null>;
 }

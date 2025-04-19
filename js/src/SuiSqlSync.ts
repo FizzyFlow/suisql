@@ -10,6 +10,8 @@ import { compress, decompress, concatUint8Arrays } from "./SuiSqlUtils";
 import { maxBinaryArgumentSize, maxMoveObjectSize } from "./SuiSqlConsts";
 // import { packages } from "./SuiSqlConsts";
 
+import { blobIdFromInt } from './SuiSqlUtils';
+
 import SuiSqlBlockchain from "./SuiSqlBlockchain";
 import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain";
 
@@ -43,7 +45,10 @@ export default class SuiSqlSync {
     public name?: string;
     public hasBeenCreated: boolean = false; // true if db was created during this session
 
+
     private owner?: SuiSqlOwnerType;
+
+    public walrusBlobId?: string; // base walrus blob id, if any
 
     private suiSql: SuiSql;
 
@@ -58,6 +63,8 @@ export default class SuiSqlSync {
 
     public chain?: SuiSqlBlockchain;
     public walrus?: SuiSqlWalrus;
+
+    private canWrite?: boolean; // use await this.hasWriteAccess() to check if we can write to the db
 
     constructor(params: SuiSqlSyncParams) {
         this.suiSql = params.suiSql;
@@ -94,6 +101,27 @@ export default class SuiSqlSync {
             });
         }
     }
+
+    async hasWriteAccess(): Promise<boolean> {
+        if (!this.id || !this.chain) {
+            return false;
+        }
+
+        if (this.canWrite !== undefined) {
+            return this.canWrite;
+        }
+        
+        const writeCapId = await this.chain.getWriteCapId(this.id);
+        if (writeCapId) {
+            this.canWrite = true;
+            return true;
+        } else {
+            this.canWrite = false;
+        }
+
+        return false;
+    }
+        
 
     get syncedAtDate() {
         if (this.syncedAt === null) {
@@ -168,8 +196,8 @@ export default class SuiSqlSync {
         const fields = await this.chain.getFields(id);
 
         if (fields.walrusBlobId) {
-            // console.error(fields.walrus);
-            await this.loadFromWalrus(fields.walrusBlobId);
+            this.walrusBlobId = blobIdFromInt(fields.walrusBlobId); // as base64
+            await this.loadFromWalrus(fields.walrusBlobId); // as int
         }
 
         if (fields.owner) {
@@ -222,45 +250,69 @@ export default class SuiSqlSync {
 
 
         let success = false;
-        if (walrusShouldBeForced) {
-            // const full = await this.getFull();
-            // if (full) {
-            //     this.syncedAt = Date.now();
-            //     success = await this.chain.saveFull(this.id, full);
-            // }
-            if (!this.walrus) {
-                throw new Error('not enough params to save walrus blob');
+
+        let gotError = null;
+
+        try {
+            if (walrusShouldBeForced) {
+                // const full = await this.getFull();
+                // if (full) {
+                //     this.syncedAt = Date.now();
+                //     success = await this.chain.saveFull(this.id, full);
+                // }
+                if (!this.walrus) {
+                    throw new Error('not enough params to save walrus blob');
+                }
+    
+                const systemObjectId = await this.walrus.getSystemObjectId();
+    
+                if (!systemObjectId) {
+                    throw new Error('can not get walrus system object id from walrusClient');
+                }
+    
+                const full = await this.getFull();
+                if (!full) {
+                    throw new Error('can not get full db');
+                }
+    
+                this.syncedAt = Date.now();
+    
+                const wrote = await this.walrus.write(full);
+                if (!wrote || !wrote.blobObjectId) {
+                    throw new Error('can not write to walrus');
+                }
+    
+                success = await this.chain.clampWithWalrus(this.id, wrote.blobObjectId, systemObjectId);
+
+                if (success) {
+                    this.walrusBlobId = blobIdFromInt(wrote.blobId); // as base64
+                } 
+            } else {
+                let expectedBlobId = null;
+                if (params?.forceExpectWalrus) {
+                    // pre-calculate blob id, so it may be filled by separate transaction
+                    expectedBlobId = await this.suiSql.getExpectedBlobId();
+                    SuiSqlLog.log('expectedBlobId', expectedBlobId);
+                }
+    
+                SuiSqlLog.log('saving patch', (patchTypeByte == 1 ? 'sql' : 'binary'), 'bytes:', selectedPatch.length);
+                this.syncedAt = Date.now();
+                success = await this.chain.savePatch(this.id, concatUint8Arrays([new Uint8Array([patchTypeByte]), selectedPatch]), expectedBlobId ? expectedBlobId : undefined);
             }
 
-            const full = await this.getFull();
-            if (!full) {
-                throw new Error('can not get full db');
-            }
-
-            this.syncedAt = Date.now();
-
-            const wrote = await this.walrus.write(full);
-            if (!wrote) {
-                throw new Error('can not write to walrus');
-            }
-
-        } else {
-            let expectedBlobId = null;
-            if (params?.forceExpectWalrus) {
-                // pre-calculate blob id, so it may be filled by separate transaction
-                expectedBlobId = await this.suiSql.getExpectedBlobId();
-                SuiSqlLog.log('expectedBlobId', expectedBlobId);
-            }
-
-            SuiSqlLog.log('saving patch', (patchTypeByte == 1 ? 'sql' : 'binary'), 'bytes:', selectedPatch.length);
-            this.syncedAt = Date.now();
-            success = await this.chain.savePatch(this.id, concatUint8Arrays([new Uint8Array([patchTypeByte]), selectedPatch]), expectedBlobId ? expectedBlobId : undefined);
+        } catch (e) {
+            gotError = e;
+            success = false;
         }
 
         if (success) {
             return true;
         } else {
             this.syncedAt = syncedAtBackup;
+
+            if (gotError) {
+                throw gotError;
+            }
 
             return false;
         }
@@ -298,8 +350,11 @@ export default class SuiSqlSync {
 
                 const success = await this.chain.fillExpectedWalrus(id, blobObjectId, systemObjectId);
 
-                return success;
+                if (success) {
+                    this.walrusBlobId = blobIdFromInt(status.blobId); // as base64
+                } 
 
+                return success;
             } else {
                 throw new Error('expected walrus blob id does not match current state of the db');
             }
@@ -310,7 +365,8 @@ export default class SuiSqlSync {
 
     async loadFromWalrus(walrusBlobId: string) {
         const data = await this.walrus?.read(walrusBlobId);
-        console.error('loaded from walrus', data);
+
+        SuiSqlLog.log('Loaded from Walrus', data );
         if (data) {
             this.suiSql.replace(data);
         }
@@ -354,7 +410,11 @@ export default class SuiSqlSync {
 
         for (const item of list) {
             try {
-                this.suiSql.db.run(item.sql);
+                if (item.params) {
+                    this.suiSql.db.run(item.sql, item.params);
+                } else {
+                    this.suiSql.db.run(item.sql);
+                }
             } catch (e) {
                 console.error(e);
             }
@@ -369,6 +429,17 @@ export default class SuiSqlSync {
         }
 
         return this.suiSql.db.export();
+    }
+
+    async getPatchJSON() {
+        const executions = this.suiSql.writeExecutions.filter((execution)=>{
+                if (this.syncedAt === null || execution.at > this.syncedAt) {
+                    return true;
+                }
+                return false;
+            });
+
+        return JSON.stringify(executions, null, 2);
     }
 
     async getPatch() {

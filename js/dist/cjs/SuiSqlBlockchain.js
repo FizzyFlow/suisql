@@ -351,6 +351,44 @@ class SuiSqlBlockchain {
     }
     return createdDbId;
   }
+  async listDatabases(callback) {
+    const packageId = await this.getPackageId();
+    const bankId = await this.getBankId();
+    if (!packageId || !bankId || !this.suiClient) {
+      throw new Error("no bankId or packageId or no suiClient");
+    }
+    const resp = await this.suiClient.getObject({
+      id: bankId,
+      options: {
+        showContent: true
+      }
+    });
+    const mapId = resp.data?.content?.fields?.map?.fields?.id?.id;
+    let cursor = null;
+    let hasNextPage = false;
+    const ret = [];
+    do {
+      const resp2 = await this.suiClient.getDynamicFields({
+        parentId: mapId
+      });
+      const thisRunRet = [];
+      for (const obj of resp2.data) {
+        let name = obj.name.value;
+        ret.push("" + name);
+        thisRunRet.push("" + name);
+      }
+      if (callback) {
+        await callback(thisRunRet);
+      }
+      if (resp2 && resp2.hasNextPage) {
+        hasNextPage = true;
+        cursor = resp2.nextCursor;
+      } else {
+        hasNextPage = false;
+      }
+    } while (hasNextPage);
+    return ret;
+  }
   getCurrentAddress() {
     if (!this.suiClient) {
       throw new Error("no suiClient");

@@ -134,7 +134,7 @@ class SuiSqlWalrus {
     if (res && res.data && res.data.newlyCreated && res.data.newlyCreated.blobObject && res.data.newlyCreated.blobObject.id) {
       import_SuiSqlLog.default.log("success", res.data);
       return {
-        blobId: res.data.newlyCreated.blobObject.blob_id,
+        blobId: (0, import_SuiSqlUtils.blobIdToInt)("" + res.data.newlyCreated.blobObject.blobId),
         blobObjectId: res.data.newlyCreated.blobObject.id
       };
     }
@@ -157,20 +157,22 @@ class SuiSqlWalrus {
       attributes: void 0
     });
     const blobObjectId = blobObject.id.id;
-    import_SuiSqlLog.default.log("walrus write success", blobId, blobObjectId);
-    return { blobId, blobObjectId };
+    const blobIdAsInt = (0, import_SuiSqlUtils.blobIdToInt)(blobId);
+    import_SuiSqlLog.default.log("walrus write success", blobIdAsInt, blobObjectId);
+    return { blobId: blobIdAsInt, blobObjectId };
   }
   async readFromAggregator(blobId) {
-    const url = this.aggregatorUrl + "/v1/blobs/" + blobId;
+    const asString = (0, import_SuiSqlUtils.blobIdFromInt)(blobId);
+    const url = this.aggregatorUrl + "/v1/blobs/" + asString;
     import_SuiSqlLog.default.log("reading blob from walrus (Aggregator)", blobId);
     const res = await import_axios.default.get(url, { responseType: "arraybuffer" });
     return new Uint8Array(res.data);
   }
   async read(blobId) {
-    const asString = (0, import_SuiSqlUtils.blobIdFromInt)(blobId);
     if (this.aggregatorUrl) {
-      return await this.readFromAggregator(asString);
+      return await this.readFromAggregator(blobId);
     }
+    const asString = (0, import_SuiSqlUtils.blobIdFromInt)(blobId);
     import_SuiSqlLog.default.log("reading blob from walrus (SDK)", blobId, asString);
     const data = await this.walrusClient?.readBlob({ blobId: asString });
     if (data) {

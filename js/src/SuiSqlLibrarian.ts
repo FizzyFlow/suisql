@@ -11,8 +11,6 @@ const isBrowser = Object.getPrototypeOf(
     Object.getPrototypeOf(globalThis)
   ) !== Object.prototype;
 
-console.log('isBrowser', isBrowser);
-
 export default class SuiSqlLibrarian {
 
     public isReady: boolean = false;

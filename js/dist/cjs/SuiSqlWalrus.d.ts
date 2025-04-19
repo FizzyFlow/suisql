@@ -22,11 +22,11 @@ export default class SuiSqlWalrus {
     calculateBlobId(data: Uint8Array): Promise<bigint | null>;
     getCurrentAddress(): string | null;
     writeToPublisher(data: Uint8Array): Promise<{
-        blobId: any;
-        blobObjectId: any;
-    }>;
+        blobId: bigint;
+        blobObjectId: string;
+    } | null>;
     write(data: Uint8Array): Promise<{
-        blobId: string;
+        blobId: bigint;
         blobObjectId: string;
     } | null>;
     readFromAggregator(blobId: string): Promise<Uint8Array | null>;
