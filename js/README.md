@@ -4,6 +4,10 @@ SuiSQL is a library and set of tools for working with decentralized SQL database
 
 It brings the power and familiarity of SQL relational databases into the world of Web3 — enabling developers to store, query, and verify tamper-proof data with full SQL support, minimal setup, and no centralized backend.
 
+### Demo
+
+[SuiSQLAdmin](https://moome.pro/sql)
+
 ### Features
 
 - ✅ SQLite-compatible — full-featured SQL engine (joins, filters, indexes)

@@ -1,7 +1,7 @@
 {
   "version": 3,
   "sources": ["../../src/SuiSqlConsts.ts"],
-  "sourcesContent": ["const maxPureArgumentSize = 16 * 1024; // todo: add base64 conversion K\nconst maxBinaryArgumentSize = Math.floor(3 * maxPureArgumentSize / 4) - 4;\nconst maxMoveObjectSize = 250 * 1024;\n\nconst packages:Object = {\n        local: '0x9010c9927792bca9df88323ea0fce0605d141a6d4d95e8e82697f0a810196144',\n        testnet: '0xcc21097ba03acbb1e57c71fd0778b6cf9dc83dd8f2b3e7392ffaa02a964aa660',\n    };\n\nexport {\n    maxPureArgumentSize,\n    maxBinaryArgumentSize,\n    maxMoveObjectSize,\n    packages,\n};"],
+  "sourcesContent": ["const maxPureArgumentSize = 16 * 1024; // todo: add base64 conversion K\nconst maxBinaryArgumentSize = Math.floor(3 * maxPureArgumentSize / 4) - 4;\nconst maxMoveObjectSize = 250 * 1024;\n\nconst packages:Object = {\n        local: '0x9010c9927792bca9df88323ea0fce0605d141a6d4d95e8e82697f0a810196144',\n        testnet: '0x07518d608ea08ea73e4a5ad0da461334fcd339dcdcdcc574022fdadfaafadb6b',\n    };\n\nexport {\n    maxPureArgumentSize,\n    maxBinaryArgumentSize,\n    maxMoveObjectSize,\n    packages,\n};"],
   "mappings": ";;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,MAAM,sBAAsB,KAAK;AACjC,MAAM,wBAAwB,KAAK,MAAM,IAAI,sBAAsB,CAAC,IAAI;AACxE,MAAM,oBAAoB,MAAM;AAEhC,MAAM,WAAkB;AAAA,EAChB,OAAO;AAAA,EACP,SAAS;AACb;",
   "names": []
 }
