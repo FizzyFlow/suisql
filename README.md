@@ -34,11 +34,11 @@ The library automatically selects the best method based on: memory size, sui obj
 ### Usage
 
 ```bash
-npm install suisql
+npm install @fizzyflow/suisql
 ```
 
 ```javascript
-import SuiSql from 'suisql';
+import SuiSql from '@fizzyflow/suisql';
 
 // minimum setup:
 const simpleDb = new SuiSql({ name: 'UniqueDbIdString', suiClient: suiSdkClient, });
