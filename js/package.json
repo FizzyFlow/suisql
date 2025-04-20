@@ -1,6 +1,6 @@
 {
   "name": "@fizzyflow/suisql",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -12,8 +12,22 @@
       "require": "./dist/cjs/index.js"
     }
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "sui",
+    "sql",
+    "walrus",
+    "database",
+    "db",
+    "sui.js",
+    "web3",
+    "dapps",
+    "dapp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fizzyFlow/suisql.git"
+  },
+  "author": "suidouble (https://github.com/suidouble)",
   "license": "Apache-2.0",
   "scripts": {
     "docs": "npx typedoc --plugin typedoc-plugin-markdown src/*",
