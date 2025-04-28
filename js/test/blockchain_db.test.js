@@ -9,12 +9,6 @@ import walrusClientMock from './includes/sampleWalrusClient.js';
 describe("set up empty db", () => {
     it("works", {}, async () => {
 
-        // const path = require('path').join(__dirname, 'walrus_wasm_bg.wasm');
-        // const bytes = require('fs').readFileSync(path);
-        
-        // console.log(bytes);
-        // const wasmModule = new WebAssembly.Module(bytes);
-        // const wasmInstance = new WebAssembly.Instance(wasmModule, imports);
 
         const phrase = "off head person candy multiply trend doll affair sketch weekend girl produce";
         // 0x50edd3b7a0f2c5b0093c541b9f28be1754a639f5ea8a7d45c9cd01563aae23b3
@@ -28,33 +22,22 @@ describe("set up empty db", () => {
             console.error(e);
         }
 
-        // const walrusClient = new WalrusClient({
-        //     network: 'testnet',
-        //     wasmUrl: walrusClientMock,
-        //     suiRpcUrl: 'https://fullnode.testnet.sui.io:443',
-        // });
-
         const db = new SuiSql({
-                name: 'new testdb 234433ffff23122 2231232',
+                name: 'new test122 223231232',
                 network: 'testnet',
                 aggregatorUrl: 'https://aggregator.walrus-testnet.walrus.space',
+                publisherUrl: 'https://walrus-publisher-testnet.n1stake.com',
                 suiClient: suiMasterTestnet.client,
                 walrusClient: walrusClientMock,
                 signer: suiMasterTestnet.signer,
                 debug: true,
             });
 
-        const databases = await db.listDatabases();
-        console.log(databases);
-        return;
 
         const state = await db.initialize();
 
-
-
         expect(db.hasUnsavedChanges()).toBeFalsy();
 
-        // await db.sync.syncFromBlockchain();
 
         if (state == 'EMPTY') {
             await db.iterateStatements(`
@@ -82,19 +65,31 @@ describe("set up empty db", () => {
     
             expect(db.hasUnsavedChanges()).toBeTruthy();
     
-            await db.syncToBlockchain();
+            await db.sync();
         }
 
         // await db.run("UPDATE employees SET name = 'GARFIELD_UPDATED' WHERE name = 'GARFIELD';");
 
-        // console.log(await db.listTables());
+        console.log(await db.listTables());
         
+        console.log(db.walrusEndEpoch);
+
+        const currentEpoch = await db.suiSqlSync.walrus.getSystemCurrentEpoch();
+
+        console.log(currentEpoch);
+
+        // return;
 
         // // console.log( await db.describeTable('employees') );
 
-        // await db.sync.syncToBlockchain({ 
-        //     forceExpectWalrus: true,
+        // await db.sync({ 
+        //     forceWalrus: true,
         // });
+        await db.extendWalrus(2);
+
+        console.log(db.walrusEndEpoch);
+
+        return;
 
         // await db.sync.fillExpectedWalrus();
 

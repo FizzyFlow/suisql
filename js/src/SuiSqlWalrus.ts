@@ -100,14 +100,41 @@ export default class SuiSqlWalrus {
         SuiSqlLog.log('SuiSqlWalrus instance', params, 'canRead:', this.canRead, 'canWrite:', this.canWrite);
     }
 
+    async getStoragePricePerEpoch(size: number): Promise<bigint | null> {
+        const BYTES_PER_UNIT_SIZE = 1024 * 1024; // 1 MiB
+        const storageUnits = BigInt(Math.ceil(size / BYTES_PER_UNIT_SIZE));
+        const systemState = await this.walrusClient?.systemState();
+
+        if (systemState && systemState.storage_price_per_unit_size) {
+            const storagPricePerUnitSize = BigInt(systemState.storage_price_per_unit_size);
+            const periodPaymentDue = storagPricePerUnitSize * storageUnits;
+
+            return periodPaymentDue;
+        }
+
+        return null;
+    }
+
     async getSystemObjectId(): Promise<string | null> {
         if (!this.walrusClient) {
             return null;
         }
 
         const systemObject = await this.walrusClient.systemObject();
-
         return systemObject.id.id;
+    }
+
+    async getSystemCurrentEpoch(): Promise<number | null> {
+        if (!this.walrusClient) {
+            return null;
+        }
+
+        const systemState = await this.walrusClient?.systemState();
+        if (systemState && systemState.committee && systemState.committee.epoch) {
+            return systemState.committee.epoch;
+        }
+
+        return null;
     }
 
     // static async calculateBlobId(data: Uint8Array): Promise<bigint | null> {
@@ -152,9 +179,15 @@ export default class SuiSqlWalrus {
         const publisherUrl = this.publisherUrl+'/v1/blobs?deletable=true&send_object_to='+this.getCurrentAddress();
         SuiSqlLog.log('writing blob to walrus via publisher', form);
 
-        const res = await axios.put(publisherUrl, data);
+        let res = null;
+        try {
+            res = await axios.put(publisherUrl, data);
+        } catch (e) {
+            SuiSqlLog.log('error writing to publisher', res, res?.data, (e as any)?.response?.data);
+            throw e;
+        }
 
-        console.log('walrus publisher response', res);
+        // SuiSqlLog.log('walrus publisher response', res);
 
         if (res && res.data && res.data.newlyCreated && res.data.newlyCreated.blobObject && res.data.newlyCreated.blobObject.id) {
             SuiSqlLog.log('success', res.data);

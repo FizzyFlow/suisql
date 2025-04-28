@@ -135,6 +135,13 @@ export default class SuiSql {
         return null;
     }
 
+    get walrusEndEpoch() {
+        if (this.suiSqlSync) {
+            return this.suiSqlSync.walrusEndEpoch;
+        }
+        return null;
+    }
+
     async hasWriteAccess() {
         if (this.suiSqlSync) {
             return await this.suiSqlSync.hasWriteAccess();
@@ -357,6 +364,16 @@ export default class SuiSql {
     async fillExpectedWalrus() {
         if (this.suiSqlSync) {
             await this.suiSqlSync.fillExpectedWalrus();
+        } else {
+            throw new Error('not enough initialization params to sync');
+        }
+    }
+
+    async extendWalrus(extendedEpochs: number = 1) {
+        await this.initialize();
+        
+        if (this.suiSqlSync) {
+            await this.suiSqlSync.extendWalrus(extendedEpochs);
         } else {
             throw new Error('not enough initialization params to sync');
         }

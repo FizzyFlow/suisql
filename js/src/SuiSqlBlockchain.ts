@@ -2,7 +2,7 @@ import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
 import { packages } from "./SuiSqlConsts";
 
-import { Transaction } from "@mysten/sui/transactions";
+import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import { bcs } from '@mysten/sui/bcs';
 
 import SuiSqlLog from './SuiSqlLog';
@@ -155,8 +155,12 @@ export default class SuiSqlBlockchain {
 
         let patches = [];
         let walrusBlobId = null;
+        let walrusEndEpoch: number | null = null;
+        let walrusStorageSize: number | null = null;
         let expectedWalrusBlobId = null;
         let owner = null;
+
+
         if (result?.data?.content) {
             const fields = (result.data.content as any).fields;
             if (fields && fields.id && fields.id.id) {
@@ -168,6 +172,12 @@ export default class SuiSqlBlockchain {
             if (fields && fields.expected_walrus_blob_id) {
                 expectedWalrusBlobId = fields.expected_walrus_blob_id;
             }
+            if (fields && fields.walrus_blob && fields.walrus_blob.fields && fields.walrus_blob.fields.storage) {
+                walrusEndEpoch = parseInt(''+fields.walrus_blob.fields.storage.fields.end_epoch);
+            }
+            if (fields && fields.walrus_blob && fields.walrus_blob.fields && fields.walrus_blob.fields.storage) {
+                walrusStorageSize = parseInt(''+fields.walrus_blob.fields.storage.fields.storage_size);
+            }
 
             if (result.data.owner) {
                 owner = (result.data.owner as SuiSqlOwnerType);
@@ -177,6 +187,8 @@ export default class SuiSqlBlockchain {
         return {
             patches,
             walrusBlobId,
+            walrusEndEpoch,
+            walrusStorageSize,
             expectedWalrusBlobId,
             owner, 
         };
@@ -241,6 +253,80 @@ export default class SuiSqlBlockchain {
     //     // }
     //     // return false;
     // }
+
+    async extendWalrus(dbId: string, walrusSystemAddress: string, extendedEpochs: number, totalPrice?: bigint): Promise<number | boolean> {
+        const packageId = await this.getPackageId();
+
+        if (!packageId || !this.suiClient) {
+            throw new Error('no packageId or no signer');
+        }
+
+        const currentAddress = this.getCurrentAddress();
+        if (!currentAddress) {
+            throw new Error('no current wallet address');
+        }
+
+        const tx = new Transaction();
+        const target = ''+packageId+'::suisql::extend_walrus';
+
+        // get wal coin type from the method signature
+        const normalized = await this.suiClient.getNormalizedMoveFunction({
+            package: packageId,
+            module: 'suisql',
+            function: 'extend_walrus',
+        });
+
+        let walCoinType = null;
+        if (normalized && normalized.parameters && normalized.parameters.length > 3) {
+            const walPackage = (normalized.parameters[3] as any)?.MutableReference?.Struct?.typeArguments[0]?.Struct?.address;
+            walCoinType = ''+walPackage+'::wal::WAL';
+        }
+
+        if (!walCoinType) {
+            throw new Error('can not get walCoinType from extend_walrus method signature');
+        }
+
+        tx.setSender(currentAddress);
+
+        const walCoin = coinWithBalance({
+            balance: totalPrice || BigInt(10000000000),
+            type: walCoinType,
+        });
+
+        const args = [
+            tx.object(dbId),
+            tx.object(walrusSystemAddress),
+            tx.pure(bcs.u32().serialize(extendedEpochs)),
+            walCoin,
+        ];
+
+        tx.moveCall({ 
+                target, 
+                arguments: args, 
+                typeArguments: [], 
+            });
+        tx.transferObjects([walCoin], currentAddress); // send the charge back
+
+        try {
+            const txResults = await this.executeTx(tx);
+
+            if (txResults && txResults.events && txResults.events.length) {
+                for (const event of txResults.events) {
+                    if (event && event.type && event.type.indexOf('BlobCertified') !== -1) {
+                        const updatedEndEpoch = (event.parsedJson as any).end_epoch;
+                        if (updatedEndEpoch) {
+                            return parseInt(''+updatedEndEpoch);
+                        }
+                    }
+                }
+            }
+
+            return true; // are we true if no BlobCertified event?
+        } catch (e) {
+            console.error('fillExpectedWalrus error', e);
+            return false;
+        }
+    }
 
     async clampWithWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string) {
         const packageId = await this.getPackageId();

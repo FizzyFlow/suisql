@@ -108,6 +108,19 @@ module suisql::suisql {
         db.expected_walrus_blob_id = option::some(walrus_blob_id);
     }
 
+    public entry fun extend_walrus(db: &mut SuiSqlDb,  walrus_system_ref: &mut system::System, extended_epochs: u32, payment: &mut Coin<WAL>) {
+        if (option::is_none(&db.walrus_blob)) {
+            abort EInvalidWalrusBlob
+        };
+
+        system::extend_blob(
+            walrus_system_ref,
+            option::borrow_mut(&mut db.walrus_blob),
+            extended_epochs,
+            payment
+        );
+    }
+    
 
     fun register_walrus_blob_reusing_storage(db: &mut SuiSqlDb, walrus_system_ref: &mut system::System, 
         blob_id: u256,

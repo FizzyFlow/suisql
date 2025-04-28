@@ -49,6 +49,8 @@ export default class SuiSqlSync {
     private owner?: SuiSqlOwnerType;
 
     public walrusBlobId?: string; // base walrus blob id, if any
+    public walrusEndEpoch?: number; // walrus end epoch, if any
+    public walrusStorageSize?: number; // walrus storage size, if any
 
     private suiSql: SuiSql;
 
@@ -200,6 +202,14 @@ export default class SuiSqlSync {
             await this.loadFromWalrus(fields.walrusBlobId); // as int
         }
 
+        if (fields.walrusEndEpoch) {
+            this.walrusEndEpoch = fields.walrusEndEpoch;
+        }
+
+        if (fields.walrusStorageSize) {
+            this.walrusStorageSize = fields.walrusStorageSize;
+        }
+
         if (fields.owner) {
             this.owner = fields.owner;
         }
@@ -316,6 +326,41 @@ export default class SuiSqlSync {
 
             return false;
         }
+    }
+
+    async extendWalrus(extendedEpochs: number = 1) {
+        if (!this.walrus || !this.chain) {
+            return;
+        }
+
+        const systemObjectId = await this.walrus.getSystemObjectId();
+        if (!systemObjectId) {
+            throw new Error('can not get walrus system object id from walrusClient');
+        }
+
+        if (!this.walrusStorageSize) {
+            throw new Error('we do not know current walrus blob storage size'); // @todo? 
+        }
+
+        const storagePricePerEpoch = await this.walrus.getStoragePricePerEpoch(this.walrusStorageSize);
+
+        if (!storagePricePerEpoch) {
+            throw new Error('can not get walrus storage price per epoch');
+        }
+
+        const totalStoragePrice = storagePricePerEpoch * BigInt(extendedEpochs);
+
+        const id = (this.id as string);
+        const results = await this.chain.extendWalrus(id, systemObjectId, extendedEpochs, totalStoragePrice);
+
+        if (typeof results === 'number') {
+            this.walrusEndEpoch = results;
+        }
+
+        if (results) {
+            return true;
+        }
+        return false;
     }
 
     async fillExpectedWalrus() {
