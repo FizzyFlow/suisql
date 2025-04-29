@@ -7,12 +7,13 @@
 import type { Signer } from '@mysten/sui/cryptography';
 
 import { getFullnodeUrl } from '@mysten/sui/client';
-
 // import { WalrusClient } from "./walrusSdk2";
 // import type { WalrusClient } from '@mysten/walrus';
 import SuiSqlLog from './SuiSqlLog';
 
-import type { WalrusClient } from '@mysten/walrus';
+import type { WalrusClient, RegisterBlobOptions, CertifyBlobOptions } from '@mysten/walrus';
+import type { Transaction } from "@mysten/sui/transactions";
+import type SuiSqlBlockchain from './SuiSqlBlockchain';
 
 import { blobIdIntFromBytes, blobIdToInt, blobIdFromInt } from './SuiSqlUtils';
 
@@ -23,6 +24,7 @@ export type SuiSqlWalrusWalrusClient = WalrusClient;
 
 type SuiSqlWalrusParams = {
     walrusClient?: WalrusClient,
+    chain?: SuiSqlBlockchain,
     currentWalletAddress?: string,
     publisherUrl?: string,
     aggregatorUrl?: string,
@@ -46,16 +48,21 @@ export default class SuiSqlWalrus {
     private canWrite: boolean = false;
     private canRead: boolean = false;
 
+    private chain?: SuiSqlBlockchain;
+
     constructor(params: SuiSqlWalrusParams) {
         this.signer = params.signer;
         this.currentWalletAddress = params.currentWalletAddress;
         this.publisherUrl = params.publisherUrl;
         this.aggregatorUrl = params.aggregatorUrl;
+
         this.walrusClient = params.walrusClient;
+        this.chain = params.chain;
 
         if (!this.currentWalletAddress && this.signer) {
             this.currentWalletAddress = this.signer.toSuiAddress();
         }
+
 
         if (!this.walrusClient && params.network) {
             if (!this.aggregatorUrl) {
@@ -227,6 +234,64 @@ export default class SuiSqlWalrus {
         return { blobId: blobIdAsInt, blobObjectId };
     }
 
+    async write2(data: Uint8Array):  Promise<{ blobId: bigint, blobObjectId: string } | null> {
+        if (!this.walrusClient || !this.chain) {
+            return null;
+        }
+        const owner = this.getCurrentAddress();
+        if (!owner) {
+            throw new Error('No owner address available');
+        }
+
+        const deletable = true;
+
+		const { sliversByNode, blobId, metadata, rootHash } = await this.walrusClient.encodeBlob(data);
+        const registerBlobTransaction = await this.registerBlobTransaction({
+			size: data.byteLength,
+			epochs: 2,
+			blobId,
+			rootHash,
+			deletable,
+			owner,
+			attributes: undefined,
+        });
+
+        const blobObjectId = await this.chain.executeRegisterBlobTransaction(registerBlobTransaction);
+
+        if (!blobObjectId) {
+            throw new Error('Can not get blobObjectId from blob registration transaction');
+        }
+        console.log(blobObjectId);
+
+		const confirmations = await this.walrusClient.writeEncodedBlobToNodes({
+			blobId,
+			metadata,
+			sliversByNode,
+			deletable,
+			objectId: blobObjectId
+		});
+
+        const certifyBlobTransaction = await this.certifyBlobTransaction({
+			blobId,
+			blobObjectId,
+			confirmations,
+			deletable,
+        });
+
+        // console.log(certifyBlobTransaction);
+
+        const success = await this.chain.executeTx(certifyBlobTransaction);
+
+        // console.log(success);
+
+        if (success) {
+            SuiSqlLog.log('walrus write success', blobId, blobObjectId);
+            return { blobId: blobIdToInt(blobId), blobObjectId };
+        }
+
+        return null;
+    }
+
     async readFromAggregator(blobId: string): Promise<Uint8Array | null> {
         const asString = blobIdFromInt(blobId);
         const url = this.aggregatorUrl+"/v1/blobs/" + asString;
@@ -255,5 +320,29 @@ export default class SuiSqlWalrus {
         }
 
         return null;
+    }
+
+    async registerBlobTransaction(options: RegisterBlobOptions): Promise<Transaction> {
+        if (!this.walrusClient) {
+            throw new Error('Walrus client not initialized');
+        }
+        const owner = this.getCurrentAddress();
+        if (!owner) {
+            throw new Error('No owner address available');
+        }
+
+        if (!options.owner) {
+            options.owner = owner;
+        }
+
+        return this.walrusClient.registerBlobTransaction(options);
+    }
+
+    async certifyBlobTransaction(options: CertifyBlobOptions): Promise<Transaction> {
+        if (!this.walrusClient) {
+            throw new Error('Walrus client not initialized');
+        }
+
+        return this.walrusClient.certifyBlobTransaction(options);
     }
 }

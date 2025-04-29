@@ -71,8 +71,13 @@ describe("set up empty db", () => {
     
             await db.sync();
         }
+        
+        await db.run("UPDATE employees SET name = 'GARFIELD_JOHNSON' WHERE name = 'JOHNSON';");
 
-        // await db.run("UPDATE employees SET name = 'GARFIELD_UPDATED' WHERE name = 'GARFIELD';");
+        await db.sync({ 
+            forceWalrus: true,
+        });
+
 
         // await db.sync({ 
         //     forceWalrus: true,

@@ -46,11 +46,13 @@ class SuiSqlWalrus {
     __publicField(this, "aggregatorUrl");
     __publicField(this, "canWrite", false);
     __publicField(this, "canRead", false);
+    __publicField(this, "chain");
     this.signer = params.signer;
     this.currentWalletAddress = params.currentWalletAddress;
     this.publisherUrl = params.publisherUrl;
     this.aggregatorUrl = params.aggregatorUrl;
     this.walrusClient = params.walrusClient;
+    this.chain = params.chain;
     if (!this.currentWalletAddress && this.signer) {
       this.currentWalletAddress = this.signer.toSuiAddress();
     }
@@ -187,6 +189,50 @@ class SuiSqlWalrus {
     import_SuiSqlLog.default.log("walrus write success", blobIdAsInt, blobObjectId);
     return { blobId: blobIdAsInt, blobObjectId };
   }
+  async write2(data) {
+    if (!this.walrusClient || !this.chain) {
+      return null;
+    }
+    const owner = this.getCurrentAddress();
+    if (!owner) {
+      throw new Error("No owner address available");
+    }
+    const deletable = true;
+    const { sliversByNode, blobId, metadata, rootHash } = await this.walrusClient.encodeBlob(data);
+    const registerBlobTransaction = await this.registerBlobTransaction({
+      size: data.byteLength,
+      epochs: 2,
+      blobId,
+      rootHash,
+      deletable,
+      owner,
+      attributes: void 0
+    });
+    const blobObjectId = await this.chain.executeRegisterBlobTransaction(registerBlobTransaction);
+    if (!blobObjectId) {
+      throw new Error("Can not get blobObjectId from blob registration transaction");
+    }
+    console.log(blobObjectId);
+    const confirmations = await this.walrusClient.writeEncodedBlobToNodes({
+      blobId,
+      metadata,
+      sliversByNode,
+      deletable,
+      objectId: blobObjectId
+    });
+    const certifyBlobTransaction = await this.certifyBlobTransaction({
+      blobId,
+      blobObjectId,
+      confirmations,
+      deletable
+    });
+    const success = await this.chain.executeTx(certifyBlobTransaction);
+    if (success) {
+      import_SuiSqlLog.default.log("walrus write success", blobId, blobObjectId);
+      return { blobId: (0, import_SuiSqlUtils.blobIdToInt)(blobId), blobObjectId };
+    }
+    return null;
+  }
   async readFromAggregator(blobId) {
     const asString = (0, import_SuiSqlUtils.blobIdFromInt)(blobId);
     const url = this.aggregatorUrl + "/v1/blobs/" + asString;
@@ -206,6 +252,25 @@ class SuiSqlWalrus {
       return data;
     }
     return null;
+  }
+  async registerBlobTransaction(options) {
+    if (!this.walrusClient) {
+      throw new Error("Walrus client not initialized");
+    }
+    const owner = this.getCurrentAddress();
+    if (!owner) {
+      throw new Error("No owner address available");
+    }
+    if (!options.owner) {
+      options.owner = owner;
+    }
+    return this.walrusClient.registerBlobTransaction(options);
+  }
+  async certifyBlobTransaction(options) {
+    if (!this.walrusClient) {
+      throw new Error("Walrus client not initialized");
+    }
+    return this.walrusClient.certifyBlobTransaction(options);
   }
 }
 //# sourceMappingURL=SuiSqlWalrus.js.map

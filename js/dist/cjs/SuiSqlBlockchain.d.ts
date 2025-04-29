@@ -48,6 +48,7 @@ export default class SuiSqlBlockchain {
     listDatabases(callback?: Function): Promise<Array<string>>;
     getCurrentAddress(): string | null;
     executeTx(tx: Transaction): Promise<import("@mysten/sui/dist/cjs/client").SuiTransactionBlockResponse | null>;
+    executeRegisterBlobTransaction(tx: Transaction): Promise<string | null>;
     coinOfAmountToTxCoin(tx: Transaction, owner: string, coinType: string, amount: bigint, addEmptyCoins?: boolean): Promise<import("@mysten/sui/dist/cjs/transactions").TransactionResult>;
     coinObjectsEnoughForAmount(owner: string, coinType: string, expectedAmount: bigint, addEmptyCoins?: boolean): Promise<string[] | null>;
 }

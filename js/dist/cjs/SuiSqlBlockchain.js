@@ -510,6 +510,30 @@ class SuiSqlBlockchain {
     }
     return null;
   }
+  async executeRegisterBlobTransaction(tx) {
+    if (!this.suiClient) {
+      throw new Error("no suiClient");
+    }
+    const results = await this.executeTx(tx);
+    if (results && results.effects && results.effects) {
+      const effects = results.effects;
+      const createdObjectIds = [];
+      for (const rec of effects.created) {
+        if (rec?.reference?.objectId) {
+          createdObjectIds.push(rec.reference.objectId);
+        }
+      }
+      const allObjects = await this.suiClient.multiGetObjects({ ids: createdObjectIds, options: { showType: true } });
+      if (allObjects && allObjects.length) {
+        for (const object of allObjects) {
+          if (object && object.data && object.data.type && object.data.type.indexOf("::blob::Blob") !== -1) {
+            return object.data.objectId;
+          }
+        }
+      }
+    }
+    return null;
+  }
   async coinOfAmountToTxCoin(tx, owner, coinType, amount, addEmptyCoins = false) {
     import_SuiSqlLog.default.log("composing coin of amount", coinType, amount);
     const expectedAmountAsBigInt = BigInt(amount);

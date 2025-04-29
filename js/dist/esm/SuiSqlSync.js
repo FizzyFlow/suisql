@@ -52,6 +52,7 @@ class SuiSqlSync {
     if (params.walrusClient || params.aggregatorUrl || params.publisherUrl || params.network) {
       this.walrus = new SuiSqlWalrus({
         walrusClient: params.walrusClient,
+        chain: this.chain,
         signer: params.signer,
         aggregatorUrl: params.aggregatorUrl,
         publisherUrl: params.publisherUrl,
@@ -204,7 +205,7 @@ class SuiSqlSync {
           throw new Error("can not get full db");
         }
         this.syncedAt = Date.now();
-        const wrote = await this.walrus.write(full);
+        const wrote = await this.walrus.write2(full);
         if (!wrote || !wrote.blobObjectId) {
           throw new Error("can not write to walrus");
         }
