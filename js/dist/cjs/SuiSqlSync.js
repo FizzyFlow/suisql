@@ -185,6 +185,7 @@ class SuiSqlSync {
       this.owner = fields.owner;
     }
     this.patchesTotalSize = 0;
+    import_SuiSqlLog.default.log("need to apply patches", fields?.patches?.length);
     for (const patch of fields.patches) {
       this.patchesTotalSize = this.patchesTotalSize + patch.length;
       await this.applyPatch(patch);
@@ -204,8 +205,11 @@ class SuiSqlSync {
     let selectedPatch = sqlPatch;
     let patchTypeByte = 1;
     if (binaryPatch && binaryPatch.length < sqlPatch.length + 200) {
-      selectedPatch = binaryPatch;
-      patchTypeByte = 2;
+      if (!this.patchesTotalSize && !this.walrusBlobId) {
+      } else {
+        selectedPatch = binaryPatch;
+        patchTypeByte = 2;
+      }
     }
     let walrusShouldBeForced = false;
     if (selectedPatch.length > import_SuiSqlConsts.maxBinaryArgumentSize) {

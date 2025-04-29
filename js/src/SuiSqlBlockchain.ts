@@ -644,7 +644,7 @@ export default class SuiSqlBlockchain {
 
         if (coinIds.length == 1) {
             if (coinType.indexOf('::sui::SUI') !== -1) {
-                const coinInput = txb.add(Commands.SplitCoins(txb.gas, [txb.pure.u64(expectedAmountAsBigInt)]));
+                const coinInput = tx.add(Commands.SplitCoins(tx.gas, [tx.pure.u64(expectedAmountAsBigInt)]));
                 return coinInput;
             } else {
                 const coinInput = tx.add(Commands.SplitCoins(tx.object(coinIds[0]), [tx.pure.u64(expectedAmountAsBigInt)]));

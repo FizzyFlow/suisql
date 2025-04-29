@@ -1,7 +1,9 @@
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __export = (target, all) => {
@@ -16,6 +18,14 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var SuiSqlBlockchain_exports = {};
@@ -26,6 +36,7 @@ module.exports = __toCommonJS(SuiSqlBlockchain_exports);
 var import_SuiSqlConsts = require("./SuiSqlConsts");
 var import_transactions = require("@mysten/sui/transactions");
 var import_bcs = require("@mysten/sui/bcs");
+var import_SuiSqlLog = __toESM(require("./SuiSqlLog"));
 class SuiSqlBlockchain {
   constructor(params) {
     __publicField(this, "suiClient");
@@ -231,11 +242,7 @@ class SuiSqlBlockchain {
     if (!walCoinType) {
       throw new Error("can not get walCoinType from extend_walrus method signature");
     }
-    tx.setSender(currentAddress);
-    const walCoin = (0, import_transactions.coinWithBalance)({
-      balance: totalPrice || BigInt(1e10),
-      type: walCoinType
-    })(tx);
+    const walCoin = await this.coinOfAmountToTxCoin(tx, currentAddress, walCoinType, totalPrice || BigInt(1e10), true);
     const args = [
       tx.object(dbId),
       tx.object(walrusSystemAddress),
@@ -500,6 +507,72 @@ class SuiSqlBlockchain {
         }
       });
       return finalResults;
+    }
+    return null;
+  }
+  async coinOfAmountToTxCoin(tx, owner, coinType, amount, addEmptyCoins = false) {
+    import_SuiSqlLog.default.log("composing coin of amount", coinType, amount);
+    const expectedAmountAsBigInt = BigInt(amount);
+    const coinIds = await this.coinObjectsEnoughForAmount(owner, coinType, expectedAmountAsBigInt, addEmptyCoins);
+    if (!coinIds || !coinIds.length) {
+      throw new Error("you do not have enough coins of needed type ");
+    }
+    import_SuiSqlLog.default.log("composing coin objects, count", coinIds.length);
+    if (coinIds.length == 1) {
+      if (coinType.indexOf("::sui::SUI") !== -1) {
+        const coinInput = tx.add(import_transactions.Commands.SplitCoins(tx.gas, [tx.pure.u64(expectedAmountAsBigInt)]));
+        return coinInput;
+      } else {
+        const coinInput = tx.add(import_transactions.Commands.SplitCoins(tx.object(coinIds[0]), [tx.pure.u64(expectedAmountAsBigInt)]));
+        return coinInput;
+      }
+    } else {
+      const coinIdToMergeIn = coinIds.shift();
+      if (coinIdToMergeIn) {
+        tx.add(import_transactions.Commands.MergeCoins(tx.object(coinIdToMergeIn), coinIds.map((id) => {
+          return tx.object(id);
+        })));
+        const coinInputSplet = tx.add(import_transactions.Commands.SplitCoins(tx.object(coinIdToMergeIn), [tx.pure.u64(expectedAmountAsBigInt)]));
+        return coinInputSplet;
+      }
+    }
+    throw new Error("should not happen");
+  }
+  async coinObjectsEnoughForAmount(owner, coinType, expectedAmount, addEmptyCoins = false) {
+    if (!this.suiClient) {
+      throw new Error("suiClient required");
+    }
+    const expectedAmountAsBigInt = BigInt(expectedAmount);
+    const coinIds = [];
+    const coins = [];
+    let result = null;
+    let cursor = null;
+    do {
+      result = await this.suiClient.getCoins({
+        owner,
+        coinType,
+        limit: 50,
+        cursor
+      });
+      coins.push(...result.data);
+      cursor = result.nextCursor;
+    } while (result.hasNextPage);
+    coins.sort((a, b) => {
+      return Number(b.balance) - Number(a.balance);
+    });
+    let totalAmount = BigInt(0);
+    for (const coin of coins) {
+      if (totalAmount <= expectedAmountAsBigInt) {
+        coinIds.push(coin.coinObjectId);
+        totalAmount = totalAmount + BigInt(coin.balance);
+      } else {
+        if (addEmptyCoins && BigInt(coin.balance) == 0n) {
+          coinIds.push(coin.coinObjectId);
+        }
+      }
+    }
+    if (totalAmount >= expectedAmountAsBigInt) {
+      return coinIds;
     }
     return null;
   }
