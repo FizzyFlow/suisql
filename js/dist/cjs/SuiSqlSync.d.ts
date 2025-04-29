@@ -28,6 +28,8 @@ export default class SuiSqlSync {
     hasBeenCreated: boolean;
     private owner?;
     walrusBlobId?: string;
+    walrusEndEpoch?: number;
+    walrusStorageSize?: number;
     private suiSql;
     private suiClient;
     private syncedAt;
@@ -47,6 +49,7 @@ export default class SuiSqlSync {
     hasUnsavedChanges(): boolean;
     syncFromBlockchain(): Promise<boolean>;
     syncToBlockchain(params?: SuiSqlSyncToBlobckchainParams): Promise<boolean>;
+    extendWalrus(extendedEpochs?: number): Promise<boolean | undefined>;
     fillExpectedWalrus(): Promise<boolean | undefined>;
     loadFromWalrus(walrusBlobId: string): Promise<void>;
     applyPatch(patch: Uint8Array): Promise<boolean>;

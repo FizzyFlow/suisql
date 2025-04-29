@@ -2,7 +2,7 @@ import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
 import { packages } from "./SuiSqlConsts";
 
-import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
+import { Transaction, Commands } from "@mysten/sui/transactions";
 import { bcs } from '@mysten/sui/bcs';
 
 import SuiSqlLog from './SuiSqlLog';
@@ -286,12 +286,7 @@ export default class SuiSqlBlockchain {
             throw new Error('can not get walCoinType from extend_walrus method signature');
         }
 
-        tx.setSender(currentAddress);
-
-        const walCoin = coinWithBalance({
-            balance: totalPrice || BigInt(10000000000),
-            type: walCoinType,
-        });
+        const walCoin = await this.coinOfAmountToTxCoin(tx, currentAddress, walCoinType, (totalPrice || BigInt(10000000000)), true);
 
         const args = [
             tx.object(dbId),
@@ -323,6 +318,8 @@ export default class SuiSqlBlockchain {
 
             return true; // are we true if no BlobCertified event?
         } catch (e) {
+            // @todo: catch EInvalidEpochsAhead ?
+
             console.error('fillExpectedWalrus error', e);
             return false;
         }
@@ -628,6 +625,89 @@ export default class SuiSqlBlockchain {
             });
 
             return finalResults;
+        }
+
+        return null;
+    }
+
+    async coinOfAmountToTxCoin(tx: Transaction, owner: string, coinType: string,  amount: bigint, addEmptyCoins = false) {
+        SuiSqlLog.log('composing coin of amount', coinType, amount);
+
+        const expectedAmountAsBigInt = BigInt(amount);
+        const coinIds = await this.coinObjectsEnoughForAmount(owner, coinType, expectedAmountAsBigInt, addEmptyCoins);
+
+        if (!coinIds || !coinIds.length) {
+            throw new Error('you do not have enough coins of needed type ');
+        }
+
+        SuiSqlLog.log('composing coin objects, count', coinIds.length);
+
+        if (coinIds.length == 1) {
+            if (coinType.indexOf('::sui::SUI') !== -1) {
+                const coinInput = txb.add(Commands.SplitCoins(txb.gas, [txb.pure.u64(expectedAmountAsBigInt)]));
+                return coinInput;
+            } else {
+                const coinInput = tx.add(Commands.SplitCoins(tx.object(coinIds[0]), [tx.pure.u64(expectedAmountAsBigInt)]));
+                return coinInput;
+            }
+        } else {
+            // few coin objects to merge
+            const coinIdToMergeIn = coinIds.shift();
+
+            if (coinIdToMergeIn) {
+                tx.add(Commands.MergeCoins(tx.object(coinIdToMergeIn), coinIds.map((id)=>{return tx.object(id);})));
+                const coinInputSplet = tx.add(Commands.SplitCoins(tx.object(coinIdToMergeIn), [tx.pure.u64(expectedAmountAsBigInt)]));
+    
+                return coinInputSplet;
+            }
+        }
+
+        throw new Error('should not happen');
+    }
+
+    async coinObjectsEnoughForAmount(owner: string, coinType: string, expectedAmount: bigint, addEmptyCoins = false) {
+        if (!this.suiClient) {
+            throw new Error('suiClient required');
+        }
+
+        const expectedAmountAsBigInt = BigInt(expectedAmount);
+
+        const coinIds = [];
+        const coins = [];
+
+        let result = null;
+        let cursor = null;
+        do {
+            result = await this.suiClient.getCoins({
+                owner: owner,
+                coinType: coinType,
+                limit: 50,
+                cursor: cursor,
+            });
+            coins.push(...result.data);
+
+            cursor = result.nextCursor;
+        } while (result.hasNextPage);
+
+        coins.sort((a, b) => {
+            // From big to small
+            return Number(b.balance) - Number(a.balance);
+        });
+
+        let totalAmount = BigInt(0);
+        for (const coin of coins) {
+            if (totalAmount <= expectedAmountAsBigInt) {
+                coinIds.push(coin.coinObjectId);
+                totalAmount = totalAmount + BigInt(coin.balance);
+            } else {
+                if (addEmptyCoins && BigInt(coin.balance) == 0n) {
+                    coinIds.push(coin.coinObjectId);
+                }
+            }
+        }
+
+        if (totalAmount >= expectedAmountAsBigInt) {
+            return coinIds;
         }
 
         return null;

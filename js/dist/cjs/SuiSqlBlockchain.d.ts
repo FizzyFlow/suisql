@@ -34,9 +34,12 @@ export default class SuiSqlBlockchain {
     getFields(dbId: string): Promise<{
         patches: any;
         walrusBlobId: any;
+        walrusEndEpoch: number | null;
+        walrusStorageSize: number | null;
         expectedWalrusBlobId: any;
         owner: SuiSqlOwnerType | null;
     }>;
+    extendWalrus(dbId: string, walrusSystemAddress: string, extendedEpochs: number, totalPrice?: bigint): Promise<number | boolean>;
     clampWithWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string): Promise<boolean>;
     fillExpectedWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string): Promise<boolean>;
     savePatch(dbId: string, patch: Uint8Array, expectedWalrusBlobId?: bigint): Promise<boolean>;

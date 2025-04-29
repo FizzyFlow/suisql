@@ -18,7 +18,9 @@ export default class SuiSqlWalrus {
     private canWrite;
     private canRead;
     constructor(params: SuiSqlWalrusParams);
+    getStoragePricePerEpoch(size: number): Promise<bigint | null>;
     getSystemObjectId(): Promise<string | null>;
+    getSystemCurrentEpoch(): Promise<number | null>;
     calculateBlobId(data: Uint8Array): Promise<bigint | null>;
     getCurrentAddress(): string | null;
     writeToPublisher(data: Uint8Array): Promise<{

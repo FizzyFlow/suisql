@@ -47,6 +47,7 @@ export default class SuiSql {
      * DB Base Walrus Blob ID ( in base64 format, the one for urls )
      */
     get walrusBlobId(): string | null | undefined;
+    get walrusEndEpoch(): number | null | undefined;
     hasWriteAccess(): Promise<boolean>;
     hasUnsavedChanges(): boolean;
     unsavedChangesCount(): number;
@@ -110,6 +111,7 @@ export default class SuiSql {
     initialize(): Promise<State>;
     sync(params?: SuiSqlSyncToBlobckchainParams): Promise<void>;
     fillExpectedWalrus(): Promise<void>;
+    extendWalrus(extendedEpochs?: number): Promise<void>;
     markAsOk(): void;
     /**
      * Execute an SQL query, ignoring the rows it returns.

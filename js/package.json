@@ -1,6 +1,6 @@
 {
   "name": "@fizzyflow/suisql",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "description": "",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",
-    "@types/node": "^22.15.2",
+    "@types/node": "^22.15.3",
     "@types/pako": "^2.0.3",
     "@types/sql.js": "^1.4.9",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -69,8 +69,8 @@
   },
   "dependencies": {
     "@mysten/bcs": "^1.6.0",
-    "@mysten/sui": "^1.28.2",
-    "@mysten/walrus": "^0.0.19",
+    "@mysten/sui": "^1.29.0",
+    "@mysten/walrus": "^0.0.20",
     "axios": "^1.9.0",
     "pako": "^2.1.0",
     "sql.js": "1.12.0"

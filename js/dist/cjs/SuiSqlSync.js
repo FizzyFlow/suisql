@@ -49,6 +49,10 @@ class SuiSqlSync {
     __publicField(this, "owner");
     __publicField(this, "walrusBlobId");
     // base walrus blob id, if any
+    __publicField(this, "walrusEndEpoch");
+    // walrus end epoch, if any
+    __publicField(this, "walrusStorageSize");
+    // walrus storage size, if any
     __publicField(this, "suiSql");
     __publicField(this, "suiClient");
     __publicField(this, "syncedAt", null);
@@ -171,6 +175,12 @@ class SuiSqlSync {
       this.walrusBlobId = (0, import_SuiSqlUtils2.blobIdFromInt)(fields.walrusBlobId);
       await this.loadFromWalrus(fields.walrusBlobId);
     }
+    if (fields.walrusEndEpoch) {
+      this.walrusEndEpoch = fields.walrusEndEpoch;
+    }
+    if (fields.walrusStorageSize) {
+      this.walrusStorageSize = fields.walrusStorageSize;
+    }
     if (fields.owner) {
       this.owner = fields.owner;
     }
@@ -253,6 +263,32 @@ class SuiSqlSync {
       }
       return false;
     }
+  }
+  async extendWalrus(extendedEpochs = 1) {
+    if (!this.walrus || !this.chain) {
+      return;
+    }
+    const systemObjectId = await this.walrus.getSystemObjectId();
+    if (!systemObjectId) {
+      throw new Error("can not get walrus system object id from walrusClient");
+    }
+    if (!this.walrusStorageSize) {
+      throw new Error("we do not know current walrus blob storage size");
+    }
+    const storagePricePerEpoch = await this.walrus.getStoragePricePerEpoch(this.walrusStorageSize);
+    if (!storagePricePerEpoch) {
+      throw new Error("can not get walrus storage price per epoch");
+    }
+    const totalStoragePrice = storagePricePerEpoch * BigInt(extendedEpochs);
+    const id = this.id;
+    const results = await this.chain.extendWalrus(id, systemObjectId, extendedEpochs, totalStoragePrice);
+    if (typeof results === "number") {
+      this.walrusEndEpoch = results;
+    }
+    if (results) {
+      return true;
+    }
+    return false;
   }
   async fillExpectedWalrus() {
     if (!this.walrus || !this.chain) {

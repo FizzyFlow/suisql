@@ -12,7 +12,7 @@ describe("set up empty db", () => {
 
         const phrase = "off head person candy multiply trend doll affair sketch weekend girl produce";
         // 0x50edd3b7a0f2c5b0093c541b9f28be1754a639f5ea8a7d45c9cd01563aae23b3
-        const suiMasterTestnet = new SuiMaster({client: 'testnet', phrase: phrase, debug: true});
+        const suiMasterTestnet = new SuiMaster({client: 'mainnet', phrase: phrase, debug: true});
         await suiMasterTestnet.initialize();
 
         try {
@@ -23,12 +23,12 @@ describe("set up empty db", () => {
         }
 
         const db = new SuiSql({
-                name: 'new test122 223231232',
-                network: 'testnet',
-                aggregatorUrl: 'https://aggregator.walrus-testnet.walrus.space',
-                publisherUrl: 'https://walrus-publisher-testnet.n1stake.com',
+                name: 'test2',
+                network: 'mainnet',
+                aggregatorUrl: 'https://aggregator.walrus-mainnet.walrus.space',
+                // publisherUrl: 'https://publisher.walrus-01.tududes.com',
                 suiClient: suiMasterTestnet.client,
-                walrusClient: walrusClientMock,
+                walrusClient: walrusClientMock.mainnet,
                 signer: suiMasterTestnet.signer,
                 debug: true,
             });
@@ -63,11 +63,21 @@ describe("set up empty db", () => {
                 INSERT INTO employees VALUES (NULL,'ROOSEVELT','CPA',9,'1995-10-12',35000,NULL,1);
                 `);
     
+            // row:  { id: 1, name: 'JOHNSON', designation: 'ADMIN', manager: 6 ... }
+            // row:  { id: 2, name: 'HARDING', designation: 'MANAGER', manager: 9 ... }
+            // row:  { id: 3, name: 'TAFT', designation: 'SALES I', manager: 2 ... }
+
             expect(db.hasUnsavedChanges()).toBeTruthy();
     
             await db.sync();
         }
 
+        // await db.run("UPDATE employees SET name = 'GARFIELD_UPDATED' WHERE name = 'GARFIELD';");
+
+        // await db.sync({ 
+        //     forceWalrus: true,
+        // });
+        // return;
         // await db.run("UPDATE employees SET name = 'GARFIELD_UPDATED' WHERE name = 'GARFIELD';");
 
         console.log(await db.listTables());
@@ -89,7 +99,7 @@ describe("set up empty db", () => {
 
         console.log(db.walrusEndEpoch);
 
-        return;
+        // return;
 
         // await db.sync.fillExpectedWalrus();
 

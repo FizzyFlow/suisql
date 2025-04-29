@@ -11,4 +11,14 @@ const walrusClient = new WalrusClient({
     suiRpcUrl: 'https://fullnode.testnet.sui.io:443',
 });
 
-export default walrusClient;
+const walrusMainnetClient = new WalrusClient({
+    network: 'mainnet',
+    wasmUrl: bytes,
+    suiRpcUrl: 'https://fullnode.mainnet.sui.io:443',
+});
+
+export default {
+    testnet: walrusClient,
+    mainnet: walrusMainnetClient,
+};
+

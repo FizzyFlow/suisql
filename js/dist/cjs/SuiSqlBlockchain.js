@@ -125,6 +125,8 @@ class SuiSqlBlockchain {
     });
     let patches = [];
     let walrusBlobId = null;
+    let walrusEndEpoch = null;
+    let walrusStorageSize = null;
     let expectedWalrusBlobId = null;
     let owner = null;
     if (result?.data?.content) {
@@ -138,6 +140,12 @@ class SuiSqlBlockchain {
       if (fields && fields.expected_walrus_blob_id) {
         expectedWalrusBlobId = fields.expected_walrus_blob_id;
       }
+      if (fields && fields.walrus_blob && fields.walrus_blob.fields && fields.walrus_blob.fields.storage) {
+        walrusEndEpoch = parseInt("" + fields.walrus_blob.fields.storage.fields.end_epoch);
+      }
+      if (fields && fields.walrus_blob && fields.walrus_blob.fields && fields.walrus_blob.fields.storage) {
+        walrusStorageSize = parseInt("" + fields.walrus_blob.fields.storage.fields.storage_size);
+      }
       if (result.data.owner) {
         owner = result.data.owner;
       }
@@ -145,6 +153,8 @@ class SuiSqlBlockchain {
     return {
       patches,
       walrusBlobId,
+      walrusEndEpoch,
+      walrusStorageSize,
       expectedWalrusBlobId,
       owner
     };
@@ -197,6 +207,65 @@ class SuiSqlBlockchain {
   //     // }
   //     // return false;
   // }
+  async extendWalrus(dbId, walrusSystemAddress, extendedEpochs, totalPrice) {
+    const packageId = await this.getPackageId();
+    if (!packageId || !this.suiClient) {
+      throw new Error("no packageId or no signer");
+    }
+    const currentAddress = this.getCurrentAddress();
+    if (!currentAddress) {
+      throw new Error("no current wallet address");
+    }
+    const tx = new import_transactions.Transaction();
+    const target = "" + packageId + "::suisql::extend_walrus";
+    const normalized = await this.suiClient.getNormalizedMoveFunction({
+      package: packageId,
+      module: "suisql",
+      function: "extend_walrus"
+    });
+    let walCoinType = null;
+    if (normalized && normalized.parameters && normalized.parameters.length > 3) {
+      const walPackage = normalized.parameters[3]?.MutableReference?.Struct?.typeArguments[0]?.Struct?.address;
+      walCoinType = "" + walPackage + "::wal::WAL";
+    }
+    if (!walCoinType) {
+      throw new Error("can not get walCoinType from extend_walrus method signature");
+    }
+    tx.setSender(currentAddress);
+    const walCoin = (0, import_transactions.coinWithBalance)({
+      balance: totalPrice || BigInt(1e10),
+      type: walCoinType
+    })(tx);
+    const args = [
+      tx.object(dbId),
+      tx.object(walrusSystemAddress),
+      tx.pure(import_bcs.bcs.u32().serialize(extendedEpochs)),
+      walCoin
+    ];
+    tx.moveCall({
+      target,
+      arguments: args,
+      typeArguments: []
+    });
+    tx.transferObjects([walCoin], currentAddress);
+    try {
+      const txResults = await this.executeTx(tx);
+      if (txResults && txResults.events && txResults.events.length) {
+        for (const event of txResults.events) {
+          if (event && event.type && event.type.indexOf("BlobCertified") !== -1) {
+            const updatedEndEpoch = event.parsedJson.end_epoch;
+            if (updatedEndEpoch) {
+              return parseInt("" + updatedEndEpoch);
+            }
+          }
+        }
+      }
+      return true;
+    } catch (e) {
+      console.error("fillExpectedWalrus error", e);
+      return false;
+    }
+  }
   async clampWithWalrus(dbId, blobAddress, walrusSystemAddress) {
     const packageId = await this.getPackageId();
     if (!packageId || !this.suiClient) {

@@ -215,6 +215,8 @@ export default class SuiSqlSync {
         }
 
         this.patchesTotalSize = 0;
+
+        SuiSqlLog.log('need to apply patches', fields?.patches?.length);
         for (const patch of fields.patches) {
             this.patchesTotalSize = this.patchesTotalSize + patch.length;
             await this.applyPatch(patch);
@@ -241,8 +243,14 @@ export default class SuiSqlSync {
         let selectedPatch = sqlPatch;
         let patchTypeByte = 1;
         if (binaryPatch && binaryPatch.length < sqlPatch.length + 200) {
-            selectedPatch = binaryPatch;
-            patchTypeByte = 2;
+            // binary seems to be ok,
+            // it's not ok to use binary patch if it's the first one on the empty database (as empty db may have 0 bytes)
+            if (!this.patchesTotalSize && !this.walrusBlobId) {
+                // keep sql patch
+            } else {
+                selectedPatch = binaryPatch;
+                patchTypeByte = 2;
+            }
         }
 
         let walrusShouldBeForced = false;
