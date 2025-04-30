@@ -22,6 +22,6 @@ node seed_the_data.js
 
 ### Links
 
-    - Thanks to Novandra Anugrah for the [dataset](https://www.kaggle.com/datasets/novandraanugrah/bitcoin-historical-datasets-2018-2024)
-    - [SuiSQL](https://github.com/FizzyFlow/suisql/)
-    - [Browse this DB on web](http://moome.pro/sql?db=btc_historical_prices)
+- Thanks to Novandra Anugrah for the [dataset](https://www.kaggle.com/datasets/novandraanugrah/bitcoin-historical-datasets-2018-2024)
+- [SuiSQL](https://github.com/FizzyFlow/suisql/)
+- [Browse this DB on web](http://moome.pro/sql?db=btc_historical_prices)
