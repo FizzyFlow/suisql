@@ -1,0 +1,19 @@
+{
+  "name": "cli_btc_price_db",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fizzyflow/suisql": "^0.0.11",
+    "@mysten/walrus": "^0.0.20",
+    "fast-csv": "^5.0.2",
+    "suidouble": "1.28.2-1"
+  }
+}

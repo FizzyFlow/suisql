@@ -1,7 +1,7 @@
 import type { Signer } from '@mysten/sui/cryptography';
 import type { WalrusClient, RegisterBlobOptions, CertifyBlobOptions } from '@mysten/walrus';
-import type { Transaction } from "@mysten/sui/transactions";
-import type SuiSqlBlockchain from './SuiSqlBlockchain';
+import { Transaction } from "@mysten/sui/transactions";
+import type SuiSqlBlockchain from './SuiSqlBlockchain.js';
 export type SuiSqlWalrusWalrusClient = WalrusClient;
 type SuiSqlWalrusParams = {
     walrusClient?: WalrusClient;

@@ -23,7 +23,7 @@ __export(SuiSqlStatement_exports, {
   default: () => SuiSqlStatement
 });
 module.exports = __toCommonJS(SuiSqlStatement_exports);
-var import_SuiSqlUtils = require("./SuiSqlUtils");
+var import_SuiSqlUtils = require("./SuiSqlUtils.js");
 class SuiSqlStatement {
   constructor(params) {
     __publicField(this, "suiSql");

@@ -1,2 +1,2 @@
-import SuiSql from "./SuiSql";
+import SuiSql from "./SuiSql.js";
 export default SuiSql;

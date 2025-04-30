@@ -31,6 +31,6 @@ __export(index_exports, {
   default: () => index_default
 });
 module.exports = __toCommonJS(index_exports);
-var import_SuiSql = __toESM(require("./SuiSql"));
+var import_SuiSql = __toESM(require("./SuiSql.js"));
 var index_default = import_SuiSql.default;
 //# sourceMappingURL=index.js.map

@@ -33,8 +33,9 @@ __export(SuiSqlWalrus_exports, {
   default: () => SuiSqlWalrus
 });
 module.exports = __toCommonJS(SuiSqlWalrus_exports);
-var import_SuiSqlLog = __toESM(require("./SuiSqlLog"));
-var import_SuiSqlUtils = require("./SuiSqlUtils");
+var import_SuiSqlLog = __toESM(require("./SuiSqlLog.js"));
+var import_transactions = require("@mysten/sui/transactions");
+var import_SuiSqlUtils = require("./SuiSqlUtils.js");
 var import_axios = __toESM(require("axios"));
 const N_SHARDS = 1e3;
 class SuiSqlWalrus {
@@ -254,7 +255,7 @@ class SuiSqlWalrus {
     return null;
   }
   async registerBlobTransaction(options) {
-    if (!this.walrusClient) {
+    if (!this.walrusClient || !this.chain) {
       throw new Error("Walrus client not initialized");
     }
     const owner = this.getCurrentAddress();
@@ -264,7 +265,13 @@ class SuiSqlWalrus {
     if (!options.owner) {
       options.owner = owner;
     }
-    return this.walrusClient.registerBlobTransaction(options);
+    const storagePricePerEpoch = await this.getStoragePricePerEpoch(Math.ceil(options.size / (1024 * 1024)));
+    const totalPrice = BigInt(1e9);
+    const tx = new import_transactions.Transaction();
+    const walCoin = await this.chain.getWalCoinForTx(tx, totalPrice);
+    const composedTx = this.walrusClient.registerBlobTransaction({ transaction: tx, walCoin, ...options });
+    composedTx.transferObjects([walCoin], owner);
+    return composedTx;
   }
   async certifyBlobTransaction(options) {
     if (!this.walrusClient) {

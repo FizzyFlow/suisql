@@ -1,10 +1,10 @@
-import SuiSql from "./SuiSql";
+import SuiSql from "./SuiSql.js";
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
-import SuiSqlBlockchain from "./SuiSqlBlockchain";
-import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain";
-import SuiSqlWalrus from "./SuiSqlWalrus";
-import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus';
+import SuiSqlBlockchain from "./SuiSqlBlockchain.js";
+import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain.js";
+import SuiSqlWalrus from "./SuiSqlWalrus.js";
+import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus.js';
 type SuiSqlSyncParams = {
     suiSql: SuiSql;
     id?: string;

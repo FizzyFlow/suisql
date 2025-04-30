@@ -33,12 +33,12 @@ __export(SuiSql_exports, {
   default: () => SuiSql
 });
 module.exports = __toCommonJS(SuiSql_exports);
-var import_SuiSqlStatement = __toESM(require("./SuiSqlStatement"));
-var import_SuiSqlSync = __toESM(require("./SuiSqlSync"));
-var import_SuiSqlField = __toESM(require("./SuiSqlField"));
-var import_SuiSqlLibrarian = __toESM(require("./SuiSqlLibrarian"));
-var import_SuiSqliteBinaryView = __toESM(require("./SuiSqliteBinaryView"));
-var import_SuiSqlLog = __toESM(require("./SuiSqlLog"));
+var import_SuiSqlStatement = __toESM(require("./SuiSqlStatement.js"));
+var import_SuiSqlSync = __toESM(require("./SuiSqlSync.js"));
+var import_SuiSqlField = __toESM(require("./SuiSqlField.js"));
+var import_SuiSqlLibrarian = __toESM(require("./SuiSqlLibrarian.js"));
+var import_SuiSqliteBinaryView = __toESM(require("./SuiSqliteBinaryView.js"));
+var import_SuiSqlLog = __toESM(require("./SuiSqlLog.js"));
 var State = /* @__PURE__ */ ((State2) => {
   State2["INITIALIZING"] = "INITIALIZING";
   State2["EMPTY"] = "EMPTY";

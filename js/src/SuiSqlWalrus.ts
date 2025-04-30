@@ -9,13 +9,13 @@ import type { Signer } from '@mysten/sui/cryptography';
 import { getFullnodeUrl } from '@mysten/sui/client';
 // import { WalrusClient } from "./walrusSdk2";
 // import type { WalrusClient } from '@mysten/walrus';
-import SuiSqlLog from './SuiSqlLog';
+import SuiSqlLog from './SuiSqlLog.js';
 
 import type { WalrusClient, RegisterBlobOptions, CertifyBlobOptions } from '@mysten/walrus';
-import type { Transaction } from "@mysten/sui/transactions";
-import type SuiSqlBlockchain from './SuiSqlBlockchain';
+import { Transaction } from "@mysten/sui/transactions";
+import type SuiSqlBlockchain from './SuiSqlBlockchain.js';
 
-import { blobIdIntFromBytes, blobIdToInt, blobIdFromInt } from './SuiSqlUtils';
+import { blobIdIntFromBytes, blobIdToInt, blobIdFromInt } from './SuiSqlUtils.js';
 
 import axios from 'axios';
 
@@ -246,6 +246,8 @@ export default class SuiSqlWalrus {
         const deletable = true;
 
 		const { sliversByNode, blobId, metadata, rootHash } = await this.walrusClient.encodeBlob(data);
+
+
         const registerBlobTransaction = await this.registerBlobTransaction({
 			size: data.byteLength,
 			epochs: 2,
@@ -323,7 +325,9 @@ export default class SuiSqlWalrus {
     }
 
     async registerBlobTransaction(options: RegisterBlobOptions): Promise<Transaction> {
-        if (!this.walrusClient) {
+        // that's all the hacks over Walrus SDK to make everything work in the browser ;(
+
+        if (!this.walrusClient || !this.chain) {
             throw new Error('Walrus client not initialized');
         }
         const owner = this.getCurrentAddress();
@@ -335,7 +339,17 @@ export default class SuiSqlWalrus {
             options.owner = owner;
         }
 
-        return this.walrusClient.registerBlobTransaction(options);
+        const storagePricePerEpoch = await this.getStoragePricePerEpoch( Math.ceil(options.size / (1024*1024)) );
+        const totalPrice = BigInt(1000000000); //storagePricePerEpoch ? storagePricePerEpoch * BigInt(2)* BigInt(2) : BigInt(1000000000);
+
+        const tx = new Transaction();
+        const walCoin = await this.chain.getWalCoinForTx(tx, totalPrice);
+
+        const composedTx =  this.walrusClient.registerBlobTransaction({ transaction: tx, walCoin, ...options });
+
+        composedTx.transferObjects([walCoin], owner); // send the charge back
+
+        return composedTx;
     }
 
     async certifyBlobTransaction(options: CertifyBlobOptions): Promise<Transaction> {

@@ -6,6 +6,8 @@ import { existsSync, promises as fs } from 'fs';
 import * as path from 'path';
 import { build } from 'esbuild';
 
+// import { esbuildPluginFilePathExtensions } from 'esbuild-plugin-file-path-extensions';
+
 const ignorePatterns = [/\.test.ts$/, /\.graphql$/];
 
 export async function buildPackage(buildOptions) {
@@ -52,6 +54,10 @@ async function buildCJS(
         outdir: 'dist/cjs',
         sourcemap: true,
         outbase: 'src',
+        // bundle: true,
+        // plugins: [esbuildPluginFilePathExtensions({ cjsExtension: 'js' })],
+        // platform: 'node',
+
         ...buildOptions,
     });
     await buildTypes('tsconfig.cjs.json');
@@ -84,6 +90,9 @@ async function buildESM(
         outdir: 'dist/esm',
         outbase: 'src',
         sourcemap: true,
+        // bundle: true,
+        // plugins: [esbuildPluginFilePathExtensions({ esmExtension: 'js' })],
+        // platform: 'node',
 
         ...buildOptions,
     });

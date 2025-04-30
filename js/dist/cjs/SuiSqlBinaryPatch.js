@@ -21,7 +21,7 @@ __export(SuiSqlBinaryPatch_exports, {
   default: () => SuiSqlBinaryPatch
 });
 module.exports = __toCommonJS(SuiSqlBinaryPatch_exports);
-var import_SuiSqlUtils = require("./SuiSqlUtils");
+var import_SuiSqlUtils = require("./SuiSqlUtils.js");
 class SuiSqlBinaryPatch {
   /**
    * Applies a binary patch to an original Uint8Array.

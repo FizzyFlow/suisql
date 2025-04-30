@@ -6,8 +6,8 @@ type SuiSqliteBinaryViewParams = {
 
 // import { WalrusClient } from '@mysten/walrus';
 
-import { int32ToUint8ArrayBE, concatUint8Arrays, compress, decompress, blobIdToInt, blobIdFromBytes } from './SuiSqlUtils';
-import SuiSqlBinaryPatch from './SuiSqlBinaryPatch';
+import { int32ToUint8ArrayBE, concatUint8Arrays, compress, decompress, blobIdToInt, blobIdFromBytes } from './SuiSqlUtils.js';
+import SuiSqlBinaryPatch from './SuiSqlBinaryPatch.js';
 
 import SuiSqlWalrus from './SuiSqlWalrus';
 

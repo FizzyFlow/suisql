@@ -1,8 +1,9 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import SuiSqlLog from "./SuiSqlLog";
-import { blobIdToInt, blobIdFromInt } from "./SuiSqlUtils";
+import SuiSqlLog from "./SuiSqlLog.js";
+import { Transaction } from "@mysten/sui/transactions";
+import { blobIdToInt, blobIdFromInt } from "./SuiSqlUtils.js";
 import axios from "axios";
 const N_SHARDS = 1e3;
 class SuiSqlWalrus {
@@ -222,7 +223,7 @@ class SuiSqlWalrus {
     return null;
   }
   async registerBlobTransaction(options) {
-    if (!this.walrusClient) {
+    if (!this.walrusClient || !this.chain) {
       throw new Error("Walrus client not initialized");
     }
     const owner = this.getCurrentAddress();
@@ -232,7 +233,13 @@ class SuiSqlWalrus {
     if (!options.owner) {
       options.owner = owner;
     }
-    return this.walrusClient.registerBlobTransaction(options);
+    const storagePricePerEpoch = await this.getStoragePricePerEpoch(Math.ceil(options.size / (1024 * 1024)));
+    const totalPrice = BigInt(1e9);
+    const tx = new Transaction();
+    const walCoin = await this.chain.getWalCoinForTx(tx, totalPrice);
+    const composedTx = this.walrusClient.registerBlobTransaction({ transaction: tx, walCoin, ...options });
+    composedTx.transferObjects([walCoin], owner);
+    return composedTx;
   }
   async certifyBlobTransaction(options) {
     if (!this.walrusClient) {

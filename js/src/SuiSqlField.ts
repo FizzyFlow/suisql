@@ -1,4 +1,4 @@
-import type SuiSql from "./SuiSql";
+import type SuiSql from "./SuiSql.js";
 
 type SuiSqlFieldParams = {
     suiSql: SuiSql,

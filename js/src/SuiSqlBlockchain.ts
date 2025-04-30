@@ -1,11 +1,11 @@
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
-import { packages } from "./SuiSqlConsts";
+import { packages } from "./SuiSqlConsts.js";
 
 import { Transaction, Commands } from "@mysten/sui/transactions";
 import { bcs } from '@mysten/sui/bcs';
 
-import SuiSqlLog from './SuiSqlLog';
+import SuiSqlLog from './SuiSqlLog.js';
 
 /**
  * Should accept Transaction as parameter and return executed transaction digest
@@ -42,6 +42,8 @@ export default class SuiSqlBlockchain {
     private network: string = 'local';
     private forcedPackageId?: string;
     private bankId?: string;
+
+    private __walCoinType?: string;
 
     constructor(params: SuiSqlBlockchainParams) {
         this.suiClient = params.suiClient;
@@ -253,6 +255,53 @@ export default class SuiSqlBlockchain {
     //     // }
     //     // return false;
     // }
+
+    async getWalCoinType() {
+        if (this.__walCoinType) {
+            return this.__walCoinType;
+        }
+        const packageId = await this.getPackageId();
+        if (!packageId || !this.suiClient) {
+            throw new Error('no packageId or no signer');
+        }
+        // get wal coin type from the method signature
+        const normalized = await this.suiClient.getNormalizedMoveFunction({
+            package: packageId,
+            module: 'suisql',
+            function: 'extend_walrus',
+        });
+
+        let walCoinType = null;
+        if (normalized && normalized.parameters && normalized.parameters.length > 3) {
+            const walPackage = (normalized.parameters[3] as any)?.MutableReference?.Struct?.typeArguments[0]?.Struct?.address;
+            walCoinType = ''+walPackage+'::wal::WAL';
+        }
+        
+        if (!walCoinType) {
+            throw new Error('can not get walCoinType from extend_walrus method signature');
+        }
+
+        this.__walCoinType = walCoinType;
+
+        return walCoinType;
+    }
+
+    async getWalCoinForTx(tx: Transaction, amount: bigint) {
+        const packageId = await this.getPackageId();
+
+        if (!packageId || !this.suiClient) {
+            throw new Error('no packageId or no signer');
+        }
+        const currentAddress = this.getCurrentAddress();
+        if (!currentAddress) {
+            throw new Error('no current wallet address');
+        }
+
+        const walCoinType = await this.getWalCoinType();
+        const walCoin = await this.coinOfAmountToTxCoin(tx, currentAddress, walCoinType, amount, true);
+
+        return walCoin;
+    }
 
     async extendWalrus(dbId: string, walrusSystemAddress: string, extendedEpochs: number, totalPrice?: bigint): Promise<number | boolean> {
         const packageId = await this.getPackageId();

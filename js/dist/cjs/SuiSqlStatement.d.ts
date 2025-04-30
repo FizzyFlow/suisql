@@ -1,4 +1,4 @@
-import type SuiSql from "./SuiSql";
+import type SuiSql from "./SuiSql.js";
 import type { Statement, BindParams } from "sql.js";
 type SuiSqlStatementParams = {
     suiSql: SuiSql;

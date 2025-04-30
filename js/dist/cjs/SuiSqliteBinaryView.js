@@ -33,8 +33,8 @@ __export(SuiSqliteBinaryView_exports, {
   default: () => SuiSqliteBinaryView
 });
 module.exports = __toCommonJS(SuiSqliteBinaryView_exports);
-var import_SuiSqlUtils = require("./SuiSqlUtils");
-var import_SuiSqlBinaryPatch = __toESM(require("./SuiSqlBinaryPatch"));
+var import_SuiSqlUtils = require("./SuiSqlUtils.js");
+var import_SuiSqlBinaryPatch = __toESM(require("./SuiSqlBinaryPatch.js"));
 class SuiSqliteBinaryView {
   constructor(params) {
     __publicField(this, "binary");

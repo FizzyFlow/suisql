@@ -1,5 +1,5 @@
 
-import { compress, decompress } from './SuiSqlUtils';
+import { compress, decompress } from './SuiSqlUtils.js';
 
 export default class SuiSqlBinaryPatch {
 	/**

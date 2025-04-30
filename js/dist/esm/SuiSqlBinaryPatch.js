@@ -1,4 +1,4 @@
-import { compress } from "./SuiSqlUtils";
+import { compress } from "./SuiSqlUtils.js";
 class SuiSqlBinaryPatch {
   /**
    * Applies a binary patch to an original Uint8Array.

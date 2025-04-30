@@ -1,8 +1,8 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { int32ToUint8ArrayBE, concatUint8Arrays, compress, decompress } from "./SuiSqlUtils";
-import SuiSqlBinaryPatch from "./SuiSqlBinaryPatch";
+import { int32ToUint8ArrayBE, concatUint8Arrays, compress, decompress } from "./SuiSqlUtils.js";
+import SuiSqlBinaryPatch from "./SuiSqlBinaryPatch.js";
 class SuiSqliteBinaryView {
   constructor(params) {
     __publicField(this, "binary");

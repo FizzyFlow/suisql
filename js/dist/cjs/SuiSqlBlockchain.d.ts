@@ -26,6 +26,7 @@ export default class SuiSqlBlockchain {
     private network;
     private forcedPackageId?;
     private bankId?;
+    private __walCoinType?;
     constructor(params: SuiSqlBlockchainParams);
     setPackageId(packageId: string): void;
     getPackageId(): string | null;
@@ -39,6 +40,8 @@ export default class SuiSqlBlockchain {
         expectedWalrusBlobId: any;
         owner: SuiSqlOwnerType | null;
     }>;
+    getWalCoinType(): Promise<string>;
+    getWalCoinForTx(tx: Transaction, amount: bigint): Promise<import("@mysten/sui/dist/cjs/transactions/Transaction.js").TransactionResult>;
     extendWalrus(dbId: string, walrusSystemAddress: string, extendedEpochs: number, totalPrice?: bigint): Promise<number | boolean>;
     clampWithWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string): Promise<boolean>;
     fillExpectedWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string): Promise<boolean>;
@@ -47,9 +50,9 @@ export default class SuiSqlBlockchain {
     makeDb(name: string): Promise<any>;
     listDatabases(callback?: Function): Promise<Array<string>>;
     getCurrentAddress(): string | null;
-    executeTx(tx: Transaction): Promise<import("@mysten/sui/dist/cjs/client").SuiTransactionBlockResponse | null>;
+    executeTx(tx: Transaction): Promise<import("@mysten/sui/dist/cjs/client/index.js").SuiTransactionBlockResponse | null>;
     executeRegisterBlobTransaction(tx: Transaction): Promise<string | null>;
-    coinOfAmountToTxCoin(tx: Transaction, owner: string, coinType: string, amount: bigint, addEmptyCoins?: boolean): Promise<import("@mysten/sui/dist/cjs/transactions").TransactionResult>;
+    coinOfAmountToTxCoin(tx: Transaction, owner: string, coinType: string, amount: bigint, addEmptyCoins?: boolean): Promise<import("@mysten/sui/dist/cjs/transactions/Transaction.js").TransactionResult>;
     coinObjectsEnoughForAmount(owner: string, coinType: string, expectedAmount: bigint, addEmptyCoins?: boolean): Promise<string[] | null>;
 }
 export {};

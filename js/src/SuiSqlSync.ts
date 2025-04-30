@@ -1,25 +1,25 @@
-import SuiSql from "./SuiSql";
+import SuiSql from "./SuiSql.js";
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
-import type { SuiSqlOwnerType } from "./SuiSqlBlockchain";
+import type { SuiSqlOwnerType } from "./SuiSqlBlockchain.js";
 
 // import { Transaction } from "@mysten/sui/transactions";
 // import { bcs } from '@mysten/sui/bcs';
 
-import { compress, decompress, concatUint8Arrays } from "./SuiSqlUtils";
-import { maxBinaryArgumentSize, maxMoveObjectSize } from "./SuiSqlConsts";
+import { compress, decompress, concatUint8Arrays } from "./SuiSqlUtils.js";
+import { maxBinaryArgumentSize, maxMoveObjectSize } from "./SuiSqlConsts.js";
 // import { packages } from "./SuiSqlConsts";
 
-import { blobIdFromInt } from './SuiSqlUtils';
+import { blobIdFromInt } from './SuiSqlUtils.js';
 
-import SuiSqlBlockchain from "./SuiSqlBlockchain";
-import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain";
+import SuiSqlBlockchain from "./SuiSqlBlockchain.js";
+import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain.js";
 
-import SuiSqlWalrus from "./SuiSqlWalrus";
+import SuiSqlWalrus from "./SuiSqlWalrus.js";
 
-import SuiSqlLog from './SuiSqlLog';
+import SuiSqlLog from './SuiSqlLog.js';
 
-import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus';
+import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus.js';
 
 type SuiSqlSyncParams = {
     suiSql: SuiSql,

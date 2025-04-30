@@ -1,12 +1,12 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { compress, decompress, concatUint8Arrays } from "./SuiSqlUtils";
-import { maxBinaryArgumentSize, maxMoveObjectSize } from "./SuiSqlConsts";
-import { blobIdFromInt } from "./SuiSqlUtils";
-import SuiSqlBlockchain from "./SuiSqlBlockchain";
-import SuiSqlWalrus from "./SuiSqlWalrus";
-import SuiSqlLog from "./SuiSqlLog";
+import { compress, decompress, concatUint8Arrays } from "./SuiSqlUtils.js";
+import { maxBinaryArgumentSize, maxMoveObjectSize } from "./SuiSqlConsts.js";
+import { blobIdFromInt } from "./SuiSqlUtils.js";
+import SuiSqlBlockchain from "./SuiSqlBlockchain.js";
+import SuiSqlWalrus from "./SuiSqlWalrus.js";
+import SuiSqlLog from "./SuiSqlLog.js";
 class SuiSqlSync {
   // use await this.hasWriteAccess() to check if we can write to the db
   constructor(params) {

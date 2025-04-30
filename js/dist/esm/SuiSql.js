@@ -1,12 +1,12 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import SuiSqlStatement from "./SuiSqlStatement";
-import SuiSqlSync from "./SuiSqlSync";
-import SuiSqlField from "./SuiSqlField";
-import SuiSqlLibrarian from "./SuiSqlLibrarian";
-import SuiSqliteBinaryView from "./SuiSqliteBinaryView";
-import SuiSqlLog from "./SuiSqlLog";
+import SuiSqlStatement from "./SuiSqlStatement.js";
+import SuiSqlSync from "./SuiSqlSync.js";
+import SuiSqlField from "./SuiSqlField.js";
+import SuiSqlLibrarian from "./SuiSqlLibrarian.js";
+import SuiSqliteBinaryView from "./SuiSqliteBinaryView.js";
+import SuiSqlLog from "./SuiSqlLog.js";
 var State = /* @__PURE__ */ ((State2) => {
   State2["INITIALIZING"] = "INITIALIZING";
   State2["EMPTY"] = "EMPTY";

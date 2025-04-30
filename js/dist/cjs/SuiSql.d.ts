@@ -1,13 +1,13 @@
-import SuiSqlStatement from './SuiSqlStatement';
-import SuiSqlSync from './SuiSqlSync';
-import type { SuiSqlSyncToBlobckchainParams } from './SuiSqlSync';
+import SuiSqlStatement from './SuiSqlStatement.js';
+import SuiSqlSync from './SuiSqlSync.js';
+import type { SuiSqlSyncToBlobckchainParams } from './SuiSqlSync.js';
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
-import SuiSqlField from './SuiSqlField';
-import type { BindParams } from './SuiSqlLibrarian';
-import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain";
-import SuiSqliteBinaryView from './SuiSqliteBinaryView';
-import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus';
+import SuiSqlField from './SuiSqlField.js';
+import type { BindParams } from './SuiSqlLibrarian.js';
+import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain.js";
+import SuiSqliteBinaryView from './SuiSqliteBinaryView.js';
+import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus.js';
 type SuiSqlParams = {
     debug?: boolean;
     id?: string;

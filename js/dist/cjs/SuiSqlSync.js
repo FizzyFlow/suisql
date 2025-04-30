@@ -33,12 +33,12 @@ __export(SuiSqlSync_exports, {
   default: () => SuiSqlSync
 });
 module.exports = __toCommonJS(SuiSqlSync_exports);
-var import_SuiSqlUtils = require("./SuiSqlUtils");
-var import_SuiSqlConsts = require("./SuiSqlConsts");
-var import_SuiSqlUtils2 = require("./SuiSqlUtils");
-var import_SuiSqlBlockchain = __toESM(require("./SuiSqlBlockchain"));
-var import_SuiSqlWalrus = __toESM(require("./SuiSqlWalrus"));
-var import_SuiSqlLog = __toESM(require("./SuiSqlLog"));
+var import_SuiSqlUtils = require("./SuiSqlUtils.js");
+var import_SuiSqlConsts = require("./SuiSqlConsts.js");
+var import_SuiSqlUtils2 = require("./SuiSqlUtils.js");
+var import_SuiSqlBlockchain = __toESM(require("./SuiSqlBlockchain.js"));
+var import_SuiSqlWalrus = __toESM(require("./SuiSqlWalrus.js"));
+var import_SuiSqlLog = __toESM(require("./SuiSqlLog.js"));
 class SuiSqlSync {
   // use await this.hasWriteAccess() to check if we can write to the db
   constructor(params) {

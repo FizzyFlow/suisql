@@ -1,26 +1,26 @@
 // import initSqlJs from 'sql.js';
-import SuiSqlStatement from './SuiSqlStatement';
-import SuiSqlSync from './SuiSqlSync';
+import SuiSqlStatement from './SuiSqlStatement.js';
+import SuiSqlSync from './SuiSqlSync.js';
 
-import type { SuiSqlSyncToBlobckchainParams } from './SuiSqlSync';
+import type { SuiSqlSyncToBlobckchainParams } from './SuiSqlSync.js';
 
 // import type { Database, BindParams } from "sql.js";
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
 
 // import { getFieldsFromCreateTableSql } from './SuiSqlUtils';
-import SuiSqlField from './SuiSqlField';
-import SuiSqlLibrarian from './SuiSqlLibrarian';
+import SuiSqlField from './SuiSqlField.js';
+import SuiSqlLibrarian from './SuiSqlLibrarian.js';
 
-import type { Database, BindParams } from './SuiSqlLibrarian';
+import type { Database, BindParams } from './SuiSqlLibrarian.js';
 
-import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain";
+import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain.js";
 
-import SuiSqliteBinaryView from './SuiSqliteBinaryView';
+import SuiSqliteBinaryView from './SuiSqliteBinaryView.js';
 
-import SuiSqlLog from './SuiSqlLog';
+import SuiSqlLog from './SuiSqlLog.js';
 
-import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus';
+import type { SuiSqlWalrusWalrusClient } from './SuiSqlWalrus.js';
 
 type SuiSqlParams = {
     debug?: boolean,
