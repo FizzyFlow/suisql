@@ -108,6 +108,10 @@ class SuiSqlBlockchain {
     if (!packageId) {
       throw new Error("can not find bank if do not know the package");
     }
+    if (import_SuiSqlConsts.bankIds[this.network]) {
+      this.bankId = import_SuiSqlConsts.bankIds[this.network];
+      return this.bankId;
+    }
     if (!this.suiClient) {
       throw new Error("suiClient required");
     }

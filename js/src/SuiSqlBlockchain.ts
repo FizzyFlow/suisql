@@ -1,6 +1,6 @@
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
-import { packages } from "./SuiSqlConsts.js";
+import { packages, bankIds } from "./SuiSqlConsts.js";
 
 import { Transaction, Commands } from "@mysten/sui/transactions";
 import { bcs } from '@mysten/sui/bcs';
@@ -121,6 +121,12 @@ export default class SuiSqlBlockchain {
         if (!packageId) {
             throw new Error('can not find bank if do not know the package');
         }
+
+        if ( (bankIds as any)[this.network] ) {
+            this.bankId = (bankIds as any)[this.network];
+            return this.bankId;
+        }
+
         if (!this.suiClient) {
             throw new Error('suiClient required');
         }

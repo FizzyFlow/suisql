@@ -8,9 +8,15 @@ const packages:Object = {
         mainnet: '0x650ff3788c4dbc7dcb3f909fd01642fd8a772dc7e003e575c9d502d51b07cabe',
     };
 
+const bankIds:Object = {
+    mainnet: '0x51800d865c2306091eb901c989e7dd982f6da87c04ee567d7259282e6f2c0e68',
+    testnet: '0xf019aeaca553f968ce5a21f550a0a9ad1ce51d27d8f70c247e9a25e17c02e138',
+};
+
 export {
     maxPureArgumentSize,
     maxBinaryArgumentSize,
     maxMoveObjectSize,
     packages,
+    bankIds,
 };

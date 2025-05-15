@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { packages } from "./SuiSqlConsts.js";
+import { packages, bankIds } from "./SuiSqlConsts.js";
 import { Transaction, Commands } from "@mysten/sui/transactions";
 import { bcs } from "@mysten/sui/bcs";
 import SuiSqlLog from "./SuiSqlLog.js";
@@ -75,6 +75,10 @@ class SuiSqlBlockchain {
     const packageId = await this.getPackageId();
     if (!packageId) {
       throw new Error("can not find bank if do not know the package");
+    }
+    if (bankIds[this.network]) {
+      this.bankId = bankIds[this.network];
+      return this.bankId;
     }
     if (!this.suiClient) {
       throw new Error("suiClient required");

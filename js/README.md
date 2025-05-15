@@ -6,7 +6,8 @@ It brings the power and familiarity of SQL relational databases into the world o
 
 ### Demo
 
-[SuiSQLAdmin](https://moome.pro/sql)
+- [SuiSQLAdmin](https://moome.pro/sql) (dApp)
+- [SuiSQL BTC Prices DB](https://github.com/FizzyFlow/suisql/tree/main/examples/cli_btc_price_db) (CLI app)
 
 ### Features
 
