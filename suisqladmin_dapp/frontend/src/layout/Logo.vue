@@ -54,15 +54,4 @@ export default {
 			margin-left: 0px;
 		}
 	}
-/*	.q-avatar {
-		background-image: url('../assets/logo.png');
-		background-repeat: no-repeat;
-		background-size: contain;
-		background-position: left center;
-		border-radius: 50%;
-	}
-
-	.q-chip .q-avatar {
-		border-radius: 50%;
-	}*/
 </style>

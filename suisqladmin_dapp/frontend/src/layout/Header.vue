@@ -94,18 +94,4 @@ export default {
 		color: var(--on-brand-text-color-dark);
 	}
 
-	a.logo {
-		position: relative;
-		display: block;
-		height: 50px;
-		line-height: 50px;
-		text-indent: 58px;
-		text-decoration: none;
-		overflow: hidden;
-		background-image: url('../assets/logo.png');
-		background-repeat: no-repeat;
-		background-size: contain;
-		background-position: left center;
-		padding-right: 14px;
-	}
 </style>

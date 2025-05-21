@@ -4,16 +4,19 @@
         <q-card-section class="q-pa-none relative-position q-pa-md">
             
             <div class="row q-col-gutter-sm">
-                <div class="col-3"></div>
-                <div class="col-6 q-pa-lg">
+                <div class="col-2"></div>
+                <div class="col-8 q-pb-lg">
                             
+                    <p class="text-center">
+                        <img src="/logo.png" alt="SuiSQL" class="q-mb-md" style="max-height: 100px;" />
+                    </p>
 
-                    <p>
+                    <p class="text-center">
                         SuiSQL is a library and set of tools for working with decentralized SQL databases on the 
                         Sui blockchain and Walrus protocol.
                     </p>
 
-                    <p class="q-mb-md">
+                    <p class="q-mb-md text-center">
                         <a href="http://github.com/fizzyFlow/suisql/" target="_blank">SuiSql on GitHub</a>
                     </p>
 
@@ -86,10 +89,68 @@
                             </ul>
 
                         </div>
+
+                        <div class="text-center q-mt-md">
+
+    <q-card class="projects" flat style="display: inline-block; ">
+    <router-link href="https://moome.pro" target="_blank"  style="text-decoration: none;">
+      <q-item>
+        <q-item-section avatar>
+          <q-avatar size="56px">
+            <img src="https://moome.pro/icon_256-min.png">
+          </q-avatar>
+        </q-item-section>
+
+        <q-item-section>
+          <q-item-label class="text-left" style="text-decoration: none;">Moome</q-item-label>
+          <q-item-label caption  class="text-left" style="text-decoration: none;">Liquid staking memes</q-item-label>
+        </q-item-section>
+      </q-item>
+    </router-link>
+    </q-card>
+
+
+    <q-card class="projects" flat style="display: inline-block; ">
+    <router-link href="https://github.com/FizzyFlow" target="_blank"  style="text-decoration: none;">
+      <q-item>
+        <q-item-section avatar>
+          <q-avatar size="56px">
+            <img src="https://avatars.githubusercontent.com/u/32710302?s=200&v=4">
+          </q-avatar>
+        </q-item-section>
+
+        <q-item-section>
+          <q-item-label class="text-left" style="text-decoration: none;">FizzyFlow</q-item-label>
+          <q-item-label caption  class="text-left" style="text-decoration: none;">Build. Build. Build</q-item-label>
+        </q-item-section>
+      </q-item>
+    </router-link>
+    </q-card>
+
+
+
+    <q-card class="projects" flat style="display: inline-block; ">
+    <router-link href="https://x.com/suidouble" target="_blank"  style="text-decoration: none;">
+      <q-item>
+        <q-item-section avatar>
+          <q-avatar size="56px">
+            <img src="https://pbs.twimg.com/profile_images/1798346265354178560/K_lWny0V_400x400.jpg">
+          </q-avatar>
+        </q-item-section>
+
+        <q-item-section>
+          <q-item-label class="text-left" style="text-decoration: none;">double.sui</q-item-label>
+          <q-item-label caption  class="text-left" style="text-decoration: none;">Follow me on X</q-item-label>
+        </q-item-section>
+      </q-item>
+    </router-link>
+    </q-card>
+
+                        </div>
                     </div>
 
                 </div>
-                <div class="col-3"></div>
+                <div class="col-2"></div>
             </div>
 
 
