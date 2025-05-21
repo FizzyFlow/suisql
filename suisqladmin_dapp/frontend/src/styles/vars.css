@@ -1,0 +1,24 @@
+:root {
+  --text-color: #000000;
+  --text-color-dark: #ffffff;
+
+  --link-color: #000000;
+  --link-color-dark: #ffffff;
+
+  --back-color: #1d1e20;
+
+  --brand-color: #ffffff;
+  --brand-border-color: #b30000;
+
+  --brand-back-filter: blur(7px);
+
+  --brand-header-color-dark: #1d1e20aa;
+  --brand-footer-color-dark: #1d1e20aa;
+
+  --brand-header-color: linear-gradient(to right,#092c4de3,#2364af99);
+  --brand-footer-color: #ad810755;
+
+
+  --on-brand-text-color: #ffffff;
+  --on-brand-text-color-dark: #ffffff;
+}

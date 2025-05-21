@@ -1,0 +1,22 @@
+/*@import url('https://fonts.googleapis.com/css2?family=Abhaya+Libre&display=swap');*/
+@import "./vars.css";
+
+
+body {
+	color: var(--text-color);
+}
+body.body--dark {
+	color: var(--text-color-dark);
+}
+
+a {
+	color: var(--link-color);
+}
+
+body.body--dark a {
+	color: var(--link-color-dark);
+}
+
+#app .q-btn {
+	text-transform: none;
+}
