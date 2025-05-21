@@ -581,7 +581,7 @@ class SuiSqlBlockchain {
     const expectedAmountAsBigInt = BigInt(amount);
     const coinIds = await this.coinObjectsEnoughForAmount(owner, coinType, expectedAmountAsBigInt, addEmptyCoins);
     if (!coinIds || !coinIds.length) {
-      throw new Error("you do not have enough coins of needed type ");
+      throw new Error("Owner: " + owner + " does not have enough coins of needed type: " + coinType);
     }
     import_SuiSqlLog.default.log("composing coin objects, count", coinIds.length);
     if (coinIds.length == 1) {
