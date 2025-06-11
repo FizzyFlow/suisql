@@ -9,8 +9,8 @@
     "dev": "node app.js dev",
     "build": "node app.js build",
     "start": "node app.js run",
-    "publishwalrus": "site-builder publish ./frontend/dist --epochs 1",
-    "updatewalrus": "site-builder update ./frontend/dist --epochs 1 0x4f1d0ab41f30727e0a459c19fb6a1f592a8141dbbc454c390ec334e0b5184c15",
+    "publishwalrus": "site-builder publish ./frontend/dist --epochs 5",
+    "updatewalrus": "site-builder update ./frontend/dist --epochs 5 0xc8babc035e69f6b096ae932d7e09dada91fa1317ace7bde39a686f1cfdf87c85",
     "heroku-postbuild": "node app.js build"
   },
   "author": "suidouble (https://github.com/suidouble)",

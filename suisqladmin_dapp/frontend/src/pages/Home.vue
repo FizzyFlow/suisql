@@ -5,7 +5,7 @@
         <q-inner-loading
             showing
             color="primary"
-            label="Connecting to Sui..."
+            label="Connecting to Sui...."
             label-class="text-primary"
             label-style="font-size: 1.1em"
             v-if="!readyForDb" 
@@ -64,6 +64,7 @@ export default {
 
     .fileInput {
         display: none;
+
     }
 
 </style>
