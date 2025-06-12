@@ -49,8 +49,18 @@ export default {
             this.isFilling = true;
 
             this.suiCoin = suiMaster.suiCoins.get(this.coinType);
-            const metadata = await this.suiCoin.getMetadata();
-            console.log('metadata', this.suiCoin.decimals);
+
+            if (this.coinType == '0x80f9b6215ae18ed1a77f5d5153c4327fd48e17dbbcd12cde06b94dd2b95e3b18::moome::MOOME') {
+                this.suiCoin._metadata = {
+                    decimals: 9,
+                    name: 'Moome',
+                    symbol: 'MOOME',
+                };
+            } else {
+                const metadata = await this.suiCoin.getMetadata();
+                console.log('metadata', this.suiCoin.decimals);
+            }
+
 
             if (!this.suiCoin.decimals) {
                 this.$q.notify({

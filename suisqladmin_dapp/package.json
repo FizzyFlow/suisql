@@ -1,6 +1,6 @@
 {
   "name": "suisql_browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "test": "tap -j=1 ./test/*.test.js",
@@ -22,8 +22,8 @@
     "fastify": "^4.27.0"
   },
   "devDependencies": {
-    "@mysten/sui": "^1.29.0",
-    "@mysten/walrus": "0.0.20",
+    "@mysten/sui": "^1.32.0",
+    "@mysten/walrus": "0.1.7",
     "@fizzyflow/suisql": "^0.0.13",
     "@polymedia/coinmeta": "^0.0.18",
     "@quasar/extras": "^1.16.17",
@@ -40,12 +40,12 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vue": "^3.5.13",
     "vue-router": "^4.5.1",
-    "vue-sui": "1.28.2-1",
+    "vue-sui": "1.32.0",
     "vue3-slide-up-down": "^2.1.0",
     "vuedraggable": "^2.24.3",
     "crypto-js": "^4.2.0",
     "simple-statistics": "^7.8.3",
-    "suidouble": "1.28.2-1",
+    "suidouble": "1.32.0",
     "tslib": "^2.8.1"
   },
   "eslintConfig": {

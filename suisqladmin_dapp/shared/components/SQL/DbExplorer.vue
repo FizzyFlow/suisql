@@ -185,7 +185,7 @@ export default {
                     fetch: async (url, options) => {
                         // quick hack:
 
-                        const maxParallelQueries = 20;
+                        const maxParallelQueries = 30;
                         if (activeQueriesCount > maxParallelQueries) {
                             do {
                                 await new Promise((res)=> setTimeout(res, 1000) );
@@ -214,6 +214,7 @@ export default {
                         }
 
                         try {
+                            options.signal = AbortSignal.timeout(15000);
                             const res = await fetch(url, options);
                             activeQueriesCount--;
                             return res;
@@ -222,7 +223,7 @@ export default {
                             throw e;
                         }
                     },
-                    timeout: 70000,
+                    timeout: 170000,
                 },
             });
 

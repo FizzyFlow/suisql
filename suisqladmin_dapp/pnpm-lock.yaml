@@ -19,14 +19,14 @@ importers:
         specifier: ^0.0.13
         version: 0.0.13(typescript@5.8.3)
       '@mysten/sui':
-        specifier: ^1.29.0
-        version: 1.30.0(typescript@5.8.3)
+        specifier: ^1.32.0
+        version: 1.32.0(typescript@5.8.3)
       '@mysten/walrus':
-        specifier: 0.0.20
-        version: 0.0.20(typescript@5.8.3)
+        specifier: 0.1.7
+        version: 0.1.7(typescript@5.8.3)
       '@polymedia/coinmeta':
         specifier: ^0.0.18
-        version: 0.0.18(@mysten/sui@1.30.0(typescript@5.8.3))
+        version: 0.0.18(@mysten/sui@1.32.0(typescript@5.8.3))
       '@quasar/extras':
         specifier: ^1.16.17
         version: 1.17.0
@@ -61,8 +61,8 @@ importers:
         specifier: ^7.8.3
         version: 7.8.8
       suidouble:
-        specifier: 1.28.2-1
-        version: 1.28.2-1(typescript@5.8.3)
+        specifier: 1.32.0
+        version: 1.32.0(typescript@5.8.3)
       tap:
         specifier: ^16.3.10
         version: 16.3.10(typescript@5.8.3)
@@ -82,8 +82,8 @@ importers:
         specifier: ^4.5.1
         version: 4.5.1(vue@3.5.14(typescript@5.8.3))
       vue-sui:
-        specifier: 1.28.2-1
-        version: 1.28.2-1(suidouble@1.28.2-1(typescript@5.8.3))(vue@3.5.14(typescript@5.8.3))
+        specifier: 1.32.0
+        version: 1.32.0(suidouble@1.32.0(typescript@5.8.3))(vue@3.5.14(typescript@5.8.3))
       vue3-slide-up-down:
         specifier: ^2.1.0
         version: 2.1.0(vue@3.5.14(typescript@5.8.3))
@@ -402,22 +402,31 @@ packages:
   '@mysten/bcs@1.6.1':
     resolution: {integrity: sha512-pywsl2+jxbib5CbteAjMpmJpnj1pcUco2ff+lXCK3hfppPbkyWEMbZDQn1jNngV6ADQ3IFIvPs0FaS7fKWPOLA==}
 
+  '@mysten/bcs@1.6.2':
+    resolution: {integrity: sha512-po3tjm3Ue7UM1cuveDvrIckR6y22LKXr7KAQf12ZOMasZ0rRjBOdq3zDCVBJC+m536hNLq5uG5U2SQPUGN5+JA==}
+
   '@mysten/sui@1.29.0':
     resolution: {integrity: sha512-0rOGYy97DZaD+TocjKOgqPalPh/IZnbMYVI1ncAKYGR59SMeunuk7RCWL6rGA8hN//JBor4nVkXpId6FlbhEeA==}
     engines: {node: '>=18'}
 
-  '@mysten/sui@1.30.0':
-    resolution: {integrity: sha512-mVEq3HQQTqw/ieiyoNbg7WDieFzUuBIKaTBvJaPKMOmjhrQutZiqJWXyHt8V+8iLEeAzhRg83eae8eHDOhklsQ==}
+  '@mysten/sui@1.32.0':
+    resolution: {integrity: sha512-rGKAWvlpIvURdu/OU/CjYp0gEwdWilD+3u73SCSdBSC5sUpz6VCJWXqi1l92IZQB44fdmboxYUUMQXuGSYwNhg==}
     engines: {node: '>=18'}
 
   '@mysten/utils@0.0.0':
     resolution: {integrity: sha512-KRI57Qow3E7TGqczimazwGf7+fwukdOi+6a31igSCzz0kPjAXbyK1a1gXaxeLMF8xEZ07ouW3RnsWt+EaUuHUw==}
+
+  '@mysten/utils@0.0.1':
+    resolution: {integrity: sha512-KrrGE1N0KFIKkQoQW5/StA6kxRZqUkZlw/Txa7rbj+MVYbnKpdWeH1Xxm7w5rWd8PZ4Sc7v6uVoPz179BAoNZA==}
 
   '@mysten/walrus-wasm@0.0.6':
     resolution: {integrity: sha512-rqXopgWqALp8jdVaHeW64P5I7MmzEGy8gCFbfzK8xGgWGpSjKtvVeHJ9EguRVOxALaYtDBVlmMPnoySJi+bLjA==}
 
   '@mysten/walrus@0.0.20':
     resolution: {integrity: sha512-DSyVruibXhWSntU90VzJ0q1jEbuhgkRwEOrwwd4tGQ36vEDWbskzuCPIbaYHmJA7N9rcK9P0mqte3+wlTQINew==}
+
+  '@mysten/walrus@0.1.7':
+    resolution: {integrity: sha512-c9V8ySRCwleH14R5QQTeQaD09rDFiDu0cEHipAHRNSakwwsgLNGY78u9Xl6KmL6zRztSCPczYbsajpE0+ZNkHQ==}
 
   '@noble/curves@1.9.1':
     resolution: {integrity: sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA==}
@@ -557,6 +566,9 @@ packages:
 
   '@scure/base@1.2.5':
     resolution: {integrity: sha512-9rE6EOVeIQzt5TSu4v+K523F8u6DhBsoZWPGKlnCshhlDhy0kJzUX4V+tr2dWmzF1GdekvThABoEQBGBQI7xZw==}
+
+  '@scure/base@1.2.6':
+    resolution: {integrity: sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg==}
 
   '@scure/bip32@1.7.0':
     resolution: {integrity: sha512-E4FFX/N3f4B80AKWp5dP6ow+flD1LQZo/w8UnLGYZO674jS6YnYeepycOOksv+vLPSpgN35wgKgy+ybfTb2SMw==}
@@ -1649,8 +1661,8 @@ packages:
     resolution: {integrity: sha512-3xurFv5tEgii33Zi8Jtp55wEIILR9eh34FAW00PZf+JnSsTmV/ioewSgQl97JHvgjoRGwPShsWm+IdrxB35d0w==}
     engines: {node: '>=8'}
 
-  suidouble@1.28.2-1:
-    resolution: {integrity: sha512-ogMt8r4JWqqPq241Qtj1VSIhN2kpATMxIXQwxiJEXF4XL84ESQj3kTCIy981LuQP+4++jHyleTXOOQYvnrhZsA==}
+  suidouble@1.32.0:
+    resolution: {integrity: sha512-UrzXTW0kw80C2mCCUvjwO31l+cfOxtHgrvavhewguco2EIx/TAOFBJvgxXFlhWl+d+jnKxswshqhca5Fh+6xeA==}
 
   supports-color@5.5.0:
     resolution: {integrity: sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==}
@@ -1835,10 +1847,10 @@ packages:
     peerDependencies:
       vue: ^3.2.0
 
-  vue-sui@1.28.2-1:
-    resolution: {integrity: sha512-y+Jj3+cxAF6FVh/OnG8huS2uDkazGtBSXMdhejyqHkORGgAaOcglmPClzX/sYM9iUGpctadUUzHkfxzN0SnOXQ==}
+  vue-sui@1.32.0:
+    resolution: {integrity: sha512-UoTtb1QXgd4K53opLimxCMqB19Sa/rW68GpJKfu1h3xok16ewUW7w5gg2lE4jDoEorfkK7b6CcA58wXtdH9cHQ==}
     peerDependencies:
-      suidouble: ^1.28.2-1
+      suidouble: ^1.32.0
       vue: ^3.0.0
 
   vue3-slide-up-down@2.1.0:
@@ -2135,7 +2147,7 @@ snapshots:
   '@fizzyflow/suisql@0.0.13(typescript@5.8.3)':
     dependencies:
       '@mysten/bcs': 1.6.1
-      '@mysten/sui': 1.30.0(typescript@5.8.3)
+      '@mysten/sui': 1.32.0(typescript@5.8.3)
       '@mysten/walrus': 0.0.20(typescript@5.8.3)
       axios: 1.9.0
       pako: 2.1.0
@@ -2210,6 +2222,11 @@ snapshots:
       '@mysten/utils': 0.0.0
       '@scure/base': 1.2.5
 
+  '@mysten/bcs@1.6.2':
+    dependencies:
+      '@mysten/utils': 0.0.1
+      '@scure/base': 1.2.6
+
   '@mysten/sui@1.29.0(typescript@5.8.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
@@ -2229,14 +2246,14 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
-  '@mysten/sui@1.30.0(typescript@5.8.3)':
+  '@mysten/sui@1.32.0(typescript@5.8.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
-      '@mysten/bcs': 1.6.1
-      '@mysten/utils': 0.0.0
+      '@mysten/bcs': 1.6.2
+      '@mysten/utils': 0.0.1
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.5
+      '@scure/base': 1.2.6
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       gql.tada: 1.8.10(graphql@16.11.0)(typescript@5.8.3)
@@ -2252,6 +2269,10 @@ snapshots:
     dependencies:
       '@scure/base': 1.2.5
 
+  '@mysten/utils@0.0.1':
+    dependencies:
+      '@scure/base': 1.2.6
+
   '@mysten/walrus-wasm@0.0.6': {}
 
   '@mysten/walrus@0.0.20(typescript@5.8.3)':
@@ -2259,6 +2280,18 @@ snapshots:
       '@mysten/bcs': 1.6.0
       '@mysten/sui': 1.29.0(typescript@5.8.3)
       '@mysten/utils': 0.0.0
+      '@mysten/walrus-wasm': 0.0.6
+      dataloader: 2.2.3
+    transitivePeerDependencies:
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - typescript
+
+  '@mysten/walrus@0.1.7(typescript@5.8.3)':
+    dependencies:
+      '@mysten/bcs': 1.6.2
+      '@mysten/sui': 1.32.0(typescript@5.8.3)
+      '@mysten/utils': 0.0.1
       '@mysten/walrus-wasm': 0.0.6
       dataloader: 2.2.3
     transitivePeerDependencies:
@@ -2275,13 +2308,13 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@polymedia/coinmeta@0.0.17(@mysten/sui@1.30.0(typescript@5.8.3))':
+  '@polymedia/coinmeta@0.0.17(@mysten/sui@1.32.0(typescript@5.8.3))':
     dependencies:
-      '@mysten/sui': 1.30.0(typescript@5.8.3)
+      '@mysten/sui': 1.32.0(typescript@5.8.3)
 
-  '@polymedia/coinmeta@0.0.18(@mysten/sui@1.30.0(typescript@5.8.3))':
+  '@polymedia/coinmeta@0.0.18(@mysten/sui@1.32.0(typescript@5.8.3))':
     dependencies:
-      '@mysten/sui': 1.30.0(typescript@5.8.3)
+      '@mysten/sui': 1.32.0(typescript@5.8.3)
 
   '@quasar/extras@1.17.0': {}
 
@@ -2354,16 +2387,18 @@ snapshots:
 
   '@scure/base@1.2.5': {}
 
+  '@scure/base@1.2.6': {}
+
   '@scure/bip32@1.7.0':
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.5
+      '@scure/base': 1.2.6
 
   '@scure/bip39@1.6.0':
     dependencies:
       '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.5
+      '@scure/base': 1.2.6
 
   '@types/estree@1.0.7': {}
 
@@ -3487,11 +3522,11 @@ snapshots:
 
   strip-bom@4.0.0: {}
 
-  suidouble@1.28.2-1(typescript@5.8.3):
+  suidouble@1.32.0(typescript@5.8.3):
     dependencies:
       '@mysten/bcs': 1.6.1
-      '@mysten/sui': 1.30.0(typescript@5.8.3)
-      '@polymedia/coinmeta': 0.0.17(@mysten/sui@1.30.0(typescript@5.8.3))
+      '@mysten/sui': 1.32.0(typescript@5.8.3)
+      '@polymedia/coinmeta': 0.0.17(@mysten/sui@1.32.0(typescript@5.8.3))
       '@scure/bip39': 1.6.0
       '@wallet-standard/core': 1.1.1
       websocket: 1.0.35
@@ -3650,9 +3685,9 @@ snapshots:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.14(typescript@5.8.3)
 
-  vue-sui@1.28.2-1(suidouble@1.28.2-1(typescript@5.8.3))(vue@3.5.14(typescript@5.8.3)):
+  vue-sui@1.32.0(suidouble@1.32.0(typescript@5.8.3))(vue@3.5.14(typescript@5.8.3)):
     dependencies:
-      suidouble: 1.28.2-1(typescript@5.8.3)
+      suidouble: 1.32.0(typescript@5.8.3)
       vue: 3.5.14(typescript@5.8.3)
 
   vue3-slide-up-down@2.1.0(vue@3.5.14(typescript@5.8.3)):

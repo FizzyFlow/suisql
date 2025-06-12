@@ -31,6 +31,21 @@ describe("set up empty db", () => {
                 walrusClient: walrusClientMock.mainnet,
                 signer: suiMasterTestnet.signer,
                 debug: true,
+                // storageNodeClientOptions: {
+                //     fetch: async (url, options) => {
+                //         // quick hack:
+                //         console.log(url);
+
+                //         try {
+                //             const res = await fetch(url, options);
+                //             return res;
+                //         } catch (e) {
+                //             console.log(e);
+                //             throw e;
+                //         }
+                //     },
+                //     timeout: 70000,
+                // },
             });
 
 
