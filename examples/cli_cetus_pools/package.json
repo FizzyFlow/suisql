@@ -1,0 +1,21 @@
+{
+  "name": "cli_cetus_pools",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cetusprotocol/cetus-sui-clmm-sdk": "^5.4.0",
+    "@fizzyflow/suisql": "^0.0.19",
+    "@mysten/sui": "^1.32.0",
+    "@mysten/walrus": "^0.1.7",
+    "suidouble": "1.32.0",
+    "tslib": "^2.8.1"
+  }
+}

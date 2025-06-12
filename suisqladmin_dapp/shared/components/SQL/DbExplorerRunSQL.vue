@@ -8,7 +8,7 @@
 
                 <q-input v-model="sql" filled type="textarea" />
                 <q-btn
-                color="white"
+                color="primary"
                 label="Run"
                 no-caps
                 outline

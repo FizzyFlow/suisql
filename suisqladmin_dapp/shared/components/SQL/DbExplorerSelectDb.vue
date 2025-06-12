@@ -33,6 +33,9 @@
                         <q-btn color="primary" outline size="sm" class="q-mx-xs"
                             @click="$emit('dbName', 'MoomeHolders')"
                             >MoomeHolders</q-btn>
+                        <q-btn color="primary" outline size="sm" class="q-mx-xs"
+                            @click="$emit('dbName', 'cetuspools')"
+                            >cetuspools</q-btn>
                         </div>
 
                         <div class="relative-position">

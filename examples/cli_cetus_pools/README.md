@@ -1,15 +1,9 @@
-### SuiSQL BTC Prices database
+### Cetus pools database
 
 Quick CLI usage example of SuiSQL library.
 
 ```bash
 pnpm install
-```
-
-Query some data from it (no private key needed):
-
-```bash
-node query_db.js
 ```
 
 Initialize and seed the database:
@@ -20,8 +14,11 @@ Create the file named `.privatekey` containing your wallet private key in format
 node seed_the_data.js
 ```
 
+### Browse this database:
+
+- [cetuspools](https://suisql.wal.app/?db=cetuspools)
+
 ### Links
 
-- Thanks to Novandra Anugrah for the [dataset](https://www.kaggle.com/datasets/novandraanugrah/bitcoin-historical-datasets-2018-2024)
 - [SuiSQL](https://github.com/FizzyFlow/suisql/)
 - [Browse this DB on web](https://suisql.wal.app/?db=btc_historical_prices)
