@@ -21,4 +21,3 @@ node seed_the_data.js
 ### Links
 
 - [SuiSQL](https://github.com/FizzyFlow/suisql/)
-- [Browse this DB on web](https://suisql.wal.app/?db=btc_historical_prices)
