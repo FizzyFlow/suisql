@@ -23,8 +23,8 @@
   },
   "devDependencies": {
     "@mysten/sui": "^1.32.0",
-    "@mysten/walrus": "0.1.7",
-    "@fizzyflow/suisql": "^0.0.13",
+    "@mysten/walrus": "0.6.1",
+    "@fizzyflow/suisql": "^0.0.21",
     "@polymedia/coinmeta": "^0.0.18",
     "@quasar/extras": "^1.16.17",
     "@quasar/vite-plugin": "^1.9.0",

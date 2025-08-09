@@ -180,7 +180,7 @@ export default {
             const walrusClient = new WalrusClient({
                 network: network,
                 suiClient: walrusSuiClient,
-                wasmUrl: 'https://unpkg.com/@mysten/walrus-wasm@0.0.5/web/walrus_wasm_bg.wasm',
+                wasmUrl: 'https://unpkg.com/@mysten/walrus-wasm@0.1.1/web/walrus_wasm_bg.wasm',
                 storageNodeClientOptions: {
                     fetch: async (url, options) => {
                         // quick hack:
