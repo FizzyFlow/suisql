@@ -1,6 +1,6 @@
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
-import { packages, bankIds } from "./SuiSqlConsts.js";
+import { packages, originalPackages, bankIds } from "./SuiSqlConsts.js";
 
 import { Transaction, Commands } from "@mysten/sui/transactions";
 import { bcs } from '@mysten/sui/bcs';
@@ -75,14 +75,25 @@ export default class SuiSqlBlockchain {
         return null;
     }
 
+    getOriginalPackageId(): string | null {
+        if (this.forcedPackageId) {
+            return this.forcedPackageId;
+        }
+
+        if ( (originalPackages as any)[this.network] ) {
+            return (originalPackages as any)[this.network];
+        }
+
+        return null;
+    }
 
     async getWriteCapId(dbId: string) {
         if (!this.suiClient) {
             throw new Error('suiClient required');
         }
-        const packageId = await this.getPackageId();
-        if (!packageId) {
-            throw new Error('can not find bank if do not know the package');
+        const originalPackageId = await this.getOriginalPackageId();
+        if (!originalPackageId) {
+            throw new Error('no originalPackageId to get write cap');
         }
 
         const currentAddress = this.getCurrentAddress();
@@ -93,7 +104,7 @@ export default class SuiSqlBlockchain {
         const result = await this.suiClient.getOwnedObjects({
             owner: currentAddress,
             filter: {
-                StructType: (packageId + '::suisql::WriteCap'),
+                StructType: (originalPackageId + '::suisql::WriteCap'),
             },
             options: {
                 showContent: true,
@@ -341,7 +352,7 @@ export default class SuiSqlBlockchain {
             throw new Error('can not get walCoinType from extend_walrus method signature');
         }
 
-        const walCoin = await this.coinOfAmountToTxCoin(tx, currentAddress, walCoinType, (totalPrice || BigInt(10000000000)), true);
+        const walCoin = await this.coinOfAmountToTxCoin(tx, currentAddress, walCoinType, (totalPrice || BigInt(1000000000)), true);
 
         const args = [
             tx.object(dbId),

@@ -4,6 +4,12 @@ const maxMoveObjectSize = 250 * 1024;
 const packages = {
   local: "0x9010c9927792bca9df88323ea0fce0605d141a6d4d95e8e82697f0a810196144",
   testnet: "0xe548b2b04b52acb1a5d5d5f887e0f3fe92143249d28831b67aa9b0f83419d8c5",
+  mainnet: "0xf55b2f4fbac4bfa87cf9ceb8a333b14834bcc8299965640d77e63818fbca5428"
+  // mainnet v2
+};
+const originalPackages = {
+  local: "0x9010c9927792bca9df88323ea0fce0605d141a6d4d95e8e82697f0a810196144",
+  testnet: "0xe548b2b04b52acb1a5d5d5f887e0f3fe92143249d28831b67aa9b0f83419d8c5",
   mainnet: "0x650ff3788c4dbc7dcb3f909fd01642fd8a772dc7e003e575c9d502d51b07cabe"
 };
 const bankIds = {
@@ -15,6 +21,7 @@ export {
   maxBinaryArgumentSize,
   maxMoveObjectSize,
   maxPureArgumentSize,
+  originalPackages,
   packages
 };
 //# sourceMappingURL=SuiSqlConsts.js.map

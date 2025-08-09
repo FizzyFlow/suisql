@@ -6,13 +6,23 @@ import { SuiMaster } from 'suidouble';
 
 import walrusClientMock from './includes/sampleWalrusClient.js';
 
+import * as fs from 'fs';
+import { fileURLToPath } from 'url';
+import path from "path";
+const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+const __dirname = path.dirname(__filename); // get the name of the directory
+
+
+const privateKey = await fs.promises.readFile(path.join(__dirname, '.privatekey'), 'utf-8');
+if (!privateKey) {
+    throw new Error('Please create a file .privatekey with your private key in format of suiprivkey1...');
+}
+
 describe("set up empty db", () => {
     it("works", {}, async () => {
 
 
-        const phrase = "off head person candy multiply trend doll affair sketch weekend girl produce";
-        // 0x50edd3b7a0f2c5b0093c541b9f28be1754a639f5ea8a7d45c9cd01563aae23b3
-        const suiMasterTestnet = new SuiMaster({client: 'mainnet', phrase: phrase, debug: true});
+        const suiMasterTestnet = new SuiMaster({client: 'mainnet', privateKey: privateKey, debug: true});
         await suiMasterTestnet.initialize();
 
         try {
@@ -23,29 +33,14 @@ describe("set up empty db", () => {
         }
 
         const db = new SuiSql({
-                name: 'test2',
+                name: 'test33343433332',
                 network: 'mainnet',
                 aggregatorUrl: 'https://aggregator.walrus-mainnet.walrus.space',
                 // publisherUrl: 'https://publisher.walrus-01.tududes.com',
                 suiClient: suiMasterTestnet.client,
                 walrusClient: walrusClientMock.mainnet,
                 signer: suiMasterTestnet.signer,
-                debug: true,
-                // storageNodeClientOptions: {
-                //     fetch: async (url, options) => {
-                //         // quick hack:
-                //         console.log(url);
-
-                //         try {
-                //             const res = await fetch(url, options);
-                //             return res;
-                //         } catch (e) {
-                //             console.log(e);
-                //             throw e;
-                //         }
-                //     },
-                //     timeout: 70000,
-                // },
+                debug: true
             });
 
 
@@ -115,9 +110,9 @@ describe("set up empty db", () => {
         // await db.sync({ 
         //     forceWalrus: true,
         // });
-        await db.extendWalrus(2);
+        // await db.extendWalrus(2);
 
-        console.log(db.walrusEndEpoch);
+        // console.log(db.walrusEndEpoch);
 
         // return;
 

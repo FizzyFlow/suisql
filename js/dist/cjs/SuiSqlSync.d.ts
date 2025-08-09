@@ -53,6 +53,7 @@ export default class SuiSqlSync {
     fillExpectedWalrus(): Promise<boolean | undefined>;
     loadFromWalrus(walrusBlobId: string): Promise<void>;
     applyPatch(patch: Uint8Array): Promise<boolean>;
+    applyRawSqlPatch(patch: string): Promise<boolean>;
     applySqlPatch(patch: Uint8Array): Promise<boolean>;
     getFull(): Promise<Uint8Array<ArrayBufferLike> | null>;
     getPatchJSON(): Promise<string>;

@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { packages, bankIds } from "./SuiSqlConsts.js";
+import { packages, originalPackages, bankIds } from "./SuiSqlConsts.js";
 import { Transaction, Commands } from "@mysten/sui/transactions";
 import { bcs } from "@mysten/sui/bcs";
 import SuiSqlLog from "./SuiSqlLog.js";
@@ -38,13 +38,22 @@ class SuiSqlBlockchain {
     }
     return null;
   }
+  getOriginalPackageId() {
+    if (this.forcedPackageId) {
+      return this.forcedPackageId;
+    }
+    if (originalPackages[this.network]) {
+      return originalPackages[this.network];
+    }
+    return null;
+  }
   async getWriteCapId(dbId) {
     if (!this.suiClient) {
       throw new Error("suiClient required");
     }
-    const packageId = await this.getPackageId();
-    if (!packageId) {
-      throw new Error("can not find bank if do not know the package");
+    const originalPackageId = await this.getOriginalPackageId();
+    if (!originalPackageId) {
+      throw new Error("no originalPackageId to get write cap");
     }
     const currentAddress = this.getCurrentAddress();
     if (!currentAddress) {
@@ -53,7 +62,7 @@ class SuiSqlBlockchain {
     const result = await this.suiClient.getOwnedObjects({
       owner: currentAddress,
       filter: {
-        StructType: packageId + "::suisql::WriteCap"
+        StructType: originalPackageId + "::suisql::WriteCap"
       },
       options: {
         showContent: true
@@ -252,7 +261,7 @@ class SuiSqlBlockchain {
     if (!walCoinType) {
       throw new Error("can not get walCoinType from extend_walrus method signature");
     }
-    const walCoin = await this.coinOfAmountToTxCoin(tx, currentAddress, walCoinType, totalPrice || BigInt(1e10), true);
+    const walCoin = await this.coinOfAmountToTxCoin(tx, currentAddress, walCoinType, totalPrice || BigInt(1e9), true);
     const args = [
       tx.object(dbId),
       tx.object(walrusSystemAddress),

@@ -30,6 +30,7 @@ export default class SuiSqlBlockchain {
     constructor(params: SuiSqlBlockchainParams);
     setPackageId(packageId: string): void;
     getPackageId(): string | null;
+    getOriginalPackageId(): string | null;
     getWriteCapId(dbId: string): Promise<string | null | undefined>;
     getBankId(): Promise<string | undefined>;
     getFields(dbId: string): Promise<{

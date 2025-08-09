@@ -142,7 +142,7 @@
         </q-item-section>
 
         <q-item-section>
-          <q-item-label class="text-left" style="text-decoration: none;">double.sui</q-item-label>
+          <q-item-label class="text-left" style="text-decoration: none;">@suidouble</q-item-label>
           <q-item-label caption  class="text-left" style="text-decoration: none;">Follow me on X</q-item-label>
         </q-item-section>
       </q-item>

@@ -254,7 +254,6 @@ export default class SuiSqlWalrus {
 			blobId,
 			rootHash,
 			deletable,
-			owner,
 			attributes: undefined,
         });
 
@@ -263,8 +262,9 @@ export default class SuiSqlWalrus {
         if (!blobObjectId) {
             throw new Error('Can not get blobObjectId from blob registration transaction');
         }
-        console.log(blobObjectId);
+        // console.log(blobObjectId);
 
+        
 		const confirmations = await this.walrusClient.writeEncodedBlobToNodes({
 			blobId,
 			metadata,
@@ -335,17 +335,13 @@ export default class SuiSqlWalrus {
             throw new Error('No owner address available');
         }
 
-        if (!options.owner) {
-            options.owner = owner;
-        }
-
         const storagePricePerEpoch = await this.getStoragePricePerEpoch( Math.ceil(options.size / (1024*1024)) );
-        const totalPrice = BigInt(1000000000); //storagePricePerEpoch ? storagePricePerEpoch * BigInt(2)* BigInt(2) : BigInt(1000000000);
+        const totalPrice = BigInt(100000000); //storagePricePerEpoch ? storagePricePerEpoch * BigInt(2)* BigInt(2) : BigInt(1000000000);
 
         const tx = new Transaction();
         const walCoin = await this.chain.getWalCoinForTx(tx, totalPrice);
 
-        const composedTx =  this.walrusClient.registerBlobTransaction({ transaction: tx, walCoin, ...options });
+        const composedTx =  this.walrusClient.registerBlobTransaction({ transaction: tx, walCoin, owner, ...options });
 
         composedTx.transferObjects([walCoin], owner); // send the charge back
 

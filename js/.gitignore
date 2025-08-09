@@ -9,6 +9,7 @@ lerna-debug.log*
 package-lock.json
 pnpm-lock.yaml
 
+coverage
 node_modules
 build
 dist-ssr

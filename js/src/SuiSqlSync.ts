@@ -436,7 +436,7 @@ export default class SuiSqlSync {
         const patchType = patch[0];
         const remainingPatch = patch.slice(1);
 
-        SuiSqlLog.log(patch, 'applyPatch', (patchType == 1 ? 'sql' : 'binary'), 'bytes:', remainingPatch.length);
+        SuiSqlLog.log(patch, 'applyPatch', patchType, (patchType == 1 ? 'sql gz' : (patchType == 2 ? 'binary' : 'unknown')), 'bytes:', remainingPatch.length);
 
         if (patchType == 1) {
             // sql patch
@@ -446,10 +446,31 @@ export default class SuiSqlSync {
             // binary patch
             const success = await this.suiSql.applyBinaryPatch(remainingPatch);
             SuiSqlLog.log('binary patch applied', success);
+        } else if (patchType >= 32) {
+            // SQL string patch as string, not gzipped
+            const sql = (new TextDecoder()).decode(new Uint8Array(patch));
+            SuiSqlLog.log('raw sql patch', sql);
+            const success = await this.applyRawSqlPatch(sql);
         }
 
 
         return true;
+    }
+
+    async applyRawSqlPatch(patch: string) {
+        if (!this.suiSql.db) {
+            return false;
+        }
+
+        SuiSqlLog.log('applying raw SQL patch', patch);
+
+        try {
+            this.suiSql.db.run(patch);
+            return true;
+        } catch (e) {
+            SuiSqlLog.log('Error applying raw SQL patch', e);
+            return false;
+        }
     }
 
     async applySqlPatch(patch: Uint8Array) {
