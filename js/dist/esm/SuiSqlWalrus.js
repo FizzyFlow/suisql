@@ -166,38 +166,37 @@ class SuiSqlWalrus {
     if (!owner) {
       throw new Error("No owner address available");
     }
-    const deletable = true;
-    const { sliversByNode, blobId, metadata, rootHash } = await this.walrusClient.encodeBlob(data);
-    const registerBlobTransaction = await this.registerBlobTransaction({
-      size: data.byteLength,
-      epochs: 2,
-      blobId,
-      rootHash,
-      deletable,
-      attributes: void 0
-    });
-    const blobObjectId = await this.chain.executeRegisterBlobTransaction(registerBlobTransaction);
-    if (!blobObjectId) {
-      throw new Error("Can not get blobObjectId from blob registration transaction");
-    }
-    const confirmations = await this.walrusClient.writeEncodedBlobToNodes({
-      blobId,
-      metadata,
-      sliversByNode,
-      deletable,
-      objectId: blobObjectId
-    });
-    const certifyBlobTransaction = await this.certifyBlobTransaction({
-      blobId,
-      blobObjectId,
-      confirmations,
-      deletable
-    });
-    const success = await this.chain.executeTx(certifyBlobTransaction);
-    if (success) {
-      SuiSqlLog.log("walrus write success", blobId, blobObjectId);
-      return { blobId: blobIdToInt(blobId), blobObjectId };
-    }
+    const flow = this.walrusClient.writeBlobFlow({ blob: data });
+    await flow.encode();
+    const handleRegister = async () => {
+      const registerTx = flow.register({
+        epochs: 3,
+        owner,
+        deletable: true
+      });
+      if (!this.chain) {
+        throw new Error("No chain available for executing the register transaction");
+      }
+      const results = await this.chain.executeTx(registerTx);
+      if (!results || !results.digest) {
+        throw new Error("Failed to execute register transaction");
+      }
+      await flow.upload({ digest: results.digest });
+    };
+    const handleCertify = async () => {
+      const certifyTx = flow.certify();
+      if (!this.chain) {
+        throw new Error("No chain available for executing the certify transaction");
+      }
+      const results = await this.chain.executeTx(certifyTx);
+      const blob = await flow.getBlob();
+      return {
+        blobId: blobIdToInt(blob.blobId),
+        blobObjectId: blob.blobObject.id.id
+      };
+    };
+    await handleRegister();
+    return await handleCertify();
     return null;
   }
   async readFromAggregator(blobId) {

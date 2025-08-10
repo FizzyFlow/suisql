@@ -243,53 +243,94 @@ export default class SuiSqlWalrus {
             throw new Error('No owner address available');
         }
 
-        const deletable = true;
+        const flow = this.walrusClient.writeBlobFlow({ blob: data });
+        await flow.encode();
 
-		const { sliversByNode, blobId, metadata, rootHash } = await this.walrusClient.encodeBlob(data);
+        // Step 2: Register the blob (triggered by user clicking a register button after the encode step)
+        const handleRegister = async () => {
+            const registerTx = flow.register({
+                epochs: 3,
+                owner: owner as string,
+                deletable: true,
+            });
+            if (!this.chain) {
+                throw new Error('No chain available for executing the register transaction');
+            }
 
-
-        const registerBlobTransaction = await this.registerBlobTransaction({
-			size: data.byteLength,
-			epochs: 2,
-			blobId,
-			rootHash,
-			deletable,
-			attributes: undefined,
-        });
-
-        const blobObjectId = await this.chain.executeRegisterBlobTransaction(registerBlobTransaction);
-
-        if (!blobObjectId) {
-            throw new Error('Can not get blobObjectId from blob registration transaction');
+            const results = await this.chain.executeTx(registerTx);
+            if (!results || !results.digest) {
+                throw new Error('Failed to execute register transaction');
+            }
+            // Step 3: Upload the data to storage nodes
+            // This can be done immediately after the register step, or as a separate step the user initiates
+            await flow.upload({ digest: results.digest });
         }
-        // console.log(blobObjectId);
+
+        const handleCertify = async () => {
+            const certifyTx = flow.certify();
+            if (!this.chain) {
+                throw new Error('No chain available for executing the certify transaction');
+            }
+            const results = await this.chain.executeTx(certifyTx);
+
+            const blob = await flow.getBlob();
+
+            return {
+                blobId: blobIdToInt(blob.blobId),
+                blobObjectId: blob.blobObject.id.id,
+            };
+        }
+
+        await handleRegister();
+        return await handleCertify();
+
+        // const deletable = true;
+
+		// const { sliversByNode, blobId, metadata, rootHash } = await this.walrusClient.encodeBlob(data);
+
+
+        // const registerBlobTransaction = await this.registerBlobTransaction({
+		// 	size: data.byteLength,
+		// 	epochs: 2,
+		// 	blobId,
+		// 	rootHash,
+		// 	deletable,
+		// 	attributes: undefined,
+        // });
+
+        // const blobObjectId = await this.chain.executeRegisterBlobTransaction(registerBlobTransaction);
+
+        // if (!blobObjectId) {
+        //     throw new Error('Can not get blobObjectId from blob registration transaction');
+        // }
+        // // console.log(blobObjectId);
 
         
-		const confirmations = await this.walrusClient.writeEncodedBlobToNodes({
-			blobId,
-			metadata,
-			sliversByNode,
-			deletable,
-			objectId: blobObjectId
-		});
+		// const confirmations = await this.walrusClient.writeEncodedBlobToNodes({
+		// 	blobId,
+		// 	metadata,
+		// 	sliversByNode,
+		// 	deletable,
+		// 	objectId: blobObjectId
+		// });
 
-        const certifyBlobTransaction = await this.certifyBlobTransaction({
-			blobId,
-			blobObjectId,
-			confirmations,
-			deletable,
-        });
+        // const certifyBlobTransaction = await this.certifyBlobTransaction({
+		// 	blobId,
+		// 	blobObjectId,
+		// 	confirmations,
+		// 	deletable,
+        // });
 
-        // console.log(certifyBlobTransaction);
+        // // console.log(certifyBlobTransaction);
 
-        const success = await this.chain.executeTx(certifyBlobTransaction);
+        // const success = await this.chain.executeTx(certifyBlobTransaction);
 
-        // console.log(success);
+        // // console.log(success);
 
-        if (success) {
-            SuiSqlLog.log('walrus write success', blobId, blobObjectId);
-            return { blobId: blobIdToInt(blobId), blobObjectId };
-        }
+        // if (success) {
+        //     SuiSqlLog.log('walrus write success', blobId, blobObjectId);
+        //     return { blobId: blobIdToInt(blobId), blobObjectId };
+        // }
 
         return null;
     }
