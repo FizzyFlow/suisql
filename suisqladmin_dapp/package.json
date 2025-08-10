@@ -1,6 +1,6 @@
 {
   "name": "suisql_browser",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "scripts": {
     "test": "tap -j=1 ./test/*.test.js",
@@ -24,7 +24,7 @@
   "devDependencies": {
     "@mysten/sui": "^1.32.0",
     "@mysten/walrus": "0.6.1",
-    "@fizzyflow/suisql": "^0.0.21",
+    "@fizzyflow/suisql": "^0.0.22",
     "@polymedia/coinmeta": "^0.0.18",
     "@quasar/extras": "^1.16.17",
     "@quasar/vite-plugin": "^1.9.0",

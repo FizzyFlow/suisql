@@ -128,50 +128,43 @@ export default {
             if (!suiMaster) {
                 return;
             }
-            const network = (''+suiMaster.connectedChain).split('sui:').join('');
-            const suiClient = SuiUtils.normalizeClient(network);
+
+            const network = (''+suiMaster.connectedChain).split('sui:').join(''); // testnet, mainnet
+            const suiClient = SuiUtils.normalizeClient(network); // instance of Sui SDK client
 
             const signAndExecuteTransaction = async (tx) => {
-                const results = await suiMaster.signAndExecuteTransaction({
-                    transaction: tx,
-                    client: suiClient,
+                tx.setSenderIfNotSet(suiMaster.address); // connected addy
+                await tx.build({
+                    client: suiClient,  // instance of Sui SDK client
                 });
+
+                const results = await suiMaster.signAndExecuteTransaction({
+                    transaction: tx, // tx with built intents
+                });
+
+                // returning tx digest:
                 return results.digest;
             };
 
-
-            console.log(suiMaster, suiMaster.signer);
-
-
-            const walrusSigner = {
-                toSuiAddress: () => {
-                    return suiMaster.address;
-                },
-                signTransaction: async(bytes) => {
-                    const results = await suiMaster._signer._activeAdapter.signTransactionBlock({
-                        transactionBlock: bytes,
-                    });
-                    console.error(results);
-                    return results;
+            const uploadRelayOptions = {
+                // https://upload-relay.mainnet.walrus.space/v1/tip-config
+                host: 'https://upload-relay.mainnet.walrus.space',
+                sendTip: {
+                    address: "0x765a6ff2c13b47e2603416d0b5a156df498a5c51bc8085be3838e43e06086256",
+                    kind: {
+                        linear: {
+                            base: 0,
+                            perEncodedKib: 40
+                        }
+                    }
                 },
             };
-            const walrusSuiClient = SuiUtils.normalizeClient(network, walrusSigner);
-            walrusSuiClient.signAndExecuteTransaction = async ({transaction}) => {
-                transaction.setSenderIfNotSet(suiMaster.address);
-                const txBytes = await transaction.build({
-                    client: walrusSuiClient,
-                });
-                const results = await suiMaster.signAndExecuteTransaction({
-                    // client: walrusSuiClient,
-                    transaction: transaction,
-                    requestType: 'WaitForLocalExecution',
-                    // sender: suiMaster.address,
-                    options: {
-                        showEffects: true,
-                        showEvents: true,
-                    },
-                });
-                return results;
+            if (network == 'testnet') {
+                // https://upload-relay.testnet.walrus.space/v1/tip-config
+                uploadRelayOptions.host = 'https://upload-relay.testnet.walrus.space';
+                uploadRelayOptions.sendTip.address = '0x4b6a7439159cf10533147fc3d678cf10b714f2bc998f6cb1f1b0b9594cdc52b6';
+                uploadRelayOptions.sendTip.kind.const = 105;
+                delete uploadRelayOptions.sendTip.kind.linear;
             }
 
             let updateWalrusQueryNofification = null;
@@ -179,12 +172,13 @@ export default {
 
             const walrusClient = new WalrusClient({
                 network: network,
-                suiClient: walrusSuiClient,
+                suiClient: suiClient,
                 wasmUrl: 'https://unpkg.com/@mysten/walrus-wasm@0.1.1/web/walrus_wasm_bg.wasm',
+                uploadRelay: uploadRelayOptions,
                 storageNodeClientOptions: {
                     fetch: async (url, options) => {
-                        // quick hack:
-
+                        // in case we go without upload relay, we need to limit parallel queries
+                        // to walrus storage nodes:
                         const maxParallelQueries = 30;
                         if (activeQueriesCount > maxParallelQueries) {
                             do {
@@ -227,8 +221,6 @@ export default {
                 },
             });
 
-            console.log(walrusClient.executeTransaction_fn);
-            console.log(walrusClient);
 
             let aggregatorUrl = 'https://aggregator.walrus-testnet.walrus.space';
             let publisherUrl = 'https://walrus-publisher-testnet.n1stake.com';
@@ -243,11 +235,8 @@ export default {
                     network: network,
                     walrusClient: walrusClient,
                     suiClient: suiClient,
-                    walrusSuiClient: walrusSuiClient,
-                    signer: walrusSigner,
                     signAndExecuteTransaction: signAndExecuteTransaction,
                     debug: true,
-
 
                     currentWalletAddress: suiMaster.address,
                     aggregatorUrl: aggregatorUrl,
@@ -258,11 +247,6 @@ export default {
             this.state = state;
             this.db = db;
 
-            // this.selectedItemType = 'table';
-            // this.selectedItemParam = 'accounts';
-
-            // const z = this.db;
-            // await z.sync.syncToBlockchain();
             window.db = db;
         },
         onDbCreated() {
