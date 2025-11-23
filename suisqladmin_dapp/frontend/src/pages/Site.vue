@@ -10,7 +10,7 @@
 <script>
   
 export default {
-    name: 'Site',
+    name: 'Site1',
     path: '/site/:id',
     props: {
     },
@@ -41,7 +41,7 @@ export default {
       h6 {
           font-size: 16px;
           font-weight: bold;
-          margin: 0 0 16px 0;
+          margin: 0 0 15px 0;
       }
   
       h5 {

@@ -17,6 +17,9 @@ body.body--dark a {
 	color: var(--link-color-dark);
 }
 
+#app .q-btndsa {
+	text-transform: none;
+}
 #app .q-btn {
 	text-transform: none;
 }

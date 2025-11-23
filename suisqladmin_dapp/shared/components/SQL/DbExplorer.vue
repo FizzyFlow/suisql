@@ -230,8 +230,7 @@ export default {
                 publisherUrl = null;
             }
 
-            const db = new SuiSql({
-                    name: this.dbName,
+            const suiSQLOptions = {
                     network: network,
                     walrusClient: walrusClient,
                     suiClient: suiClient,
@@ -241,7 +240,14 @@ export default {
                     currentWalletAddress: suiMaster.address,
                     aggregatorUrl: aggregatorUrl,
                     publisherUrl: publisherUrl,
-                });
+                };
+            if (this.dbName.startsWith('0x')) {
+                suiSQLOptions.id = this.dbName;
+            } else {
+                suiSQLOptions.name = this.dbName;
+            }
+
+            const db = new SuiSql(suiSQLOptions);
 
             const state = await db.initialize();
             this.state = state;

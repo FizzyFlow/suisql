@@ -16,9 +16,9 @@
     </div>
 
 </template>
-
 <script>
 import DbExplorer from 'shared/components/SQL/DbExplorer.vue';
+
 
 export default {
 	name: 'Home',
