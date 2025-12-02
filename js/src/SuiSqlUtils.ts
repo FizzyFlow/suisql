@@ -32,7 +32,7 @@ const anyShallowCopy = (input: Object|Array<any>|any): Object|Array<any>|any => 
  * Determine if SQL statement 100% updates database state
  */
 const isSureWriteSql = (sql: string) => {
-    const checks = ['CREATE', 'ALTER', 'INSERT', 'UPDATE', 'DELETE', 'DROP'];
+    const checks = ['CREATE', 'ALTER', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'VACUUM', 'REINDEX', 'REPLACE'];
     for (const check of checks) {
         if (sql.trim().toUpperCase().startsWith(check)) {
             return true;
@@ -54,9 +54,6 @@ const getFieldsFromCreateTableSql = (sql: string): Array<string> | null => {
         const definition = field.trim().toLowerCase();
         ret.push(definition);
     }
-
-    console.log(ret);
-    console.log(ret);
 
     return ret;
 };
@@ -144,6 +141,26 @@ function blobIdToInt(blobId: string): bigint {
 	return BigInt(bcs.u256().fromBase64(blobId.replaceAll('-', '+').replaceAll('_', '/')));
 }
 
+function uint8ArrayToBase64(input: Uint8Array): string {
+    const normalized = Uint8Array.from(input);
+    let binary = '';
+    const len = normalized.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(normalized[i]);
+    }
+    return btoa(binary);
+}
+
+function base64ToUint8Array(base64: string): Uint8Array {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
+
 export { 
     anyShallowCopy, 
     isSureWriteSql, 
@@ -160,4 +177,7 @@ export {
     blobIdFromBytes,
     blobIdToInt,
     blobIdIntFromBytes,
+
+    uint8ArrayToBase64,
+    base64ToUint8Array,
 };

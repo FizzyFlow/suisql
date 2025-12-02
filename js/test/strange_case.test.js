@@ -1,0 +1,256 @@
+
+import { describe, expect, it } from "vitest";
+
+import SuiSql from "../src/SuiSql";
+import { SuiMaster } from 'suidouble';
+
+import { int32ToUint8ArrayBE, concatUint8Arrays, compress, decompress, blobIdToInt, blobIdFromBytes, uint8ArrayToBase64, base64ToUint8Array,  } from '../src/SuiSqlUtils';
+import SuiSqliteBinaryView from "../src/SuiSqliteBinaryView";
+
+import * as fs from 'fs';
+import { fileURLToPath } from 'url';
+import path from "path";
+const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+const __dirname = path.dirname(__filename); // get the name of the directory
+
+
+const privateKey = await fs.promises.readFile(path.join(__dirname, '.privatekey'), 'utf-8');
+if (!privateKey) {
+    throw new Error('Please create a file .privatekey with your private key in format of suiprivkey1...');
+}
+
+function equalUint8Arrays(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+function compareUint8Arrays(a, b) {
+  if (!(a instanceof Uint8Array) || !(b instanceof Uint8Array)) {
+    console.error("Both inputs must be Uint8Array");
+    return;
+  }
+
+  const maxLen = Math.max(a.length, b.length);
+  let different = false;
+  for (let i = 0; i < maxLen; i++) {
+    const byteA = a[i];
+    const byteB = b[i];
+
+    if (byteA !== byteB) {
+      console.log(
+        `Difference at index ${i}: ` +
+        `${byteA === undefined ? "⛔ out of range" : byteA} ` +
+        `!= ${byteB === undefined ? "⛔ out of range" : byteB}`
+      );
+      different = true;
+    }
+  }
+
+  if (a.length === b.length) {
+    console.log("Done. Arrays have the same length.");
+  } else {
+    console.log(
+      `Done. Length differs: a.length = ${a.length}, b.length = ${b.length}`
+    );
+    different = true;
+  }
+  return !different;
+}
+
+describe("trying to fix strange case arrived on mainnet", () => {
+    it("should not throw 'database disk image is malformed'", {}, async () => {
+
+        const suiMasterMainnet = new SuiMaster({client: 'mainnet', privateKey: privateKey, debug: true});
+        await suiMasterMainnet.initialize();
+
+        try {
+            await suiMasterMainnet.requestSuiFromFaucet();
+        } catch (e) {
+            // ok, if you have testnet sui in wallet
+            console.error(e);
+        }
+
+        const db = new SuiSql({
+                id: '0xAAAAAAAAAAAAAAAAA',
+                network: 'mainnet',
+                aggregatorUrl: 'https://aggregator.walrus-mainnet.walrus.space',
+                // publisherUrl: 'https://publisher.walrus-01.tududes.com',
+                suiClient: suiMasterMainnet.client,
+                walrusClient: suiMasterMainnet.mainnetNoRelay,
+                signer: suiMasterMainnet.signer,
+                debug: true,
+            });
+
+        db.__initializationPromise = new Promise((res)=>{ res(); });
+        // don't initialize, do ourselves
+        // await db.initialize();
+        db.state = 'OK';
+        
+        db._db = await db.librarian.fromBinary();
+        // await db.touch();
+        const redata = db.export();
+        db.initialBinaryView = new SuiSqliteBinaryView({
+            binary: redata,
+        });
+
+        const patches = [
+            "AXicvZBRT8IwFIX/yk1fNpK9ADoQnybemMXRYekMRM3SsIFNRjfXgkbDf3cDX9SB8UGbtGma0/udc+7eSCFKsdJkoNZZ5hD9lJEBGTL0OAL3LgKEebHWeaxTY6RaarDvFRxYMgGfcrxCBmPmjzw2g2ucgRfx0KfVzBFS7hz+rsQqBY5TDjSsdhQER8Qbka336mZN65w4RBgyaPfcruue9TvVxd06RwNH1L+JsApxidMqzUv8OXu8cxjSL5XY9XMjr3eI59MJMl63FX7rt57m7PO14NYLIpyAbUkljRSZfE2T+Fmax3iTllrmynLAaluN9P4P9JABw3HgDfE3RkRR7HqowSbVpoHtnna6f8ZOUj0vZWE+si+EThZQH/9tJC/lUipdm2hGn2wf3gFHpPpS",
+            "AnicJY49CsJAEIXfmLhRJAYEKxEStfME1l7AQuuwaJSAJks2XQqvYecVtLQTD+EFPIi+xYU337xl/gT/16dGkC6REkK2qAslaEVXUkEaovdHCHkREeTO2MCbtH0mZ8zGC21MWuhTts5sHS9XG1vG/DrmW13nZcGuAStv6CAKfExDTfeAMmlZ5QfmTySFHSsf88RN2mV2W+XGte613e1jF9yBHhWw/gsJnOd+DOlf9MQboogPpP0DOYYm1w==",
+            "AnicY2SAAD4glmZg5AFS8UCKEUgzAbEPEDOCWQwMbAyM84AUN5jin8fALMjBAmQsYmCRFU8sALKWM3DE5yXmpjoHhAJ5GxgY84HUJgZGLiB1mIGRE2QoMxCzA/n/gcIgPtAEBlEg/xBE2TWgMiD1mIGRAwDcaQ9N",
+            "AnicAwAAAAAB",
+            "Anic7c/PSsNAEAbw2fxREGIOgqUqZKEXxV40tNhjLItE01TCFiweQqxdKcRuadre+yC+giffxJfwMZy117yAMD/48oVhAhMGO2eYU2A+VgDMxboEZmPlOGTYJl8YB2zH+8SXQ7BMe/fwsT1x9hthyLbPq+KlnE4W60rnk6rKN8VyZiZVzcjtZyKSgsvoNhG8ZoGfz155nEpxJzL+mMWDKBvzBzHm0UgO4xQ/H4hUtvm8eJ9yKZ4kT4eYUZK0+aYo17vhhTnc/Ejn73hmYe0B+8Y6AMvHxjQblh2ymhvMNrgePsyq/2P2CSGEEEIIIYQQ8k8cWQ40g4Veroqy1bvqqLCr1DFzIAhK/ab7utTL1o3q9q6VUr8jRFGc",
+        ];
+
+        let j = 0;
+        for (const patch of patches) {
+            const binaryPatch = base64ToUint8Array(patch);
+            await db.suiSqlSync.applyPatch(binaryPatch);
+            db.syncedAt = Date.now();
+            await new Promise((res)=>setTimeout(res, 5)); // small delay to be sure syncedAt is in the past
+
+            j++;
+        }
+
+            // const buggyQueries2 = `
+            // INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'appName${Math.random()}', 'CPUso2');       
+            // INSERT OR REPLACE INTO cpuso_css_variables (name, value) VALUES ('primary', '#ff51b5ff');
+            // `;
+
+            // await db.iterateStatements(buggyQueries2);
+
+        let binaryBase = new Uint8Array(await db.export());
+
+        const extraPaches = [];
+
+        const binaryForPatches = {};
+
+        for (let i = 0; i < 1000; i++) {
+            // 113
+            // INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'appName${Math.random()}', 'CPUso2');     
+            const buggyQueries = `  
+            INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'primary1_${i}', '#ff51b5ff');
+            INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'primary2_${i}', '#ff51b5ff');
+            INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'primary3_${i}', '#ff51b5ff');
+            INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'primary4_${i}', '#ff51b5ff');
+            INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'primary5_${i}', '#ff51b5ff');
+            INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'primary6_${i}', '#ff51b5ff');
+            INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'primary7_${i}', '#ff51b5ff');
+            INSERT INTO cpuso_settings (id, name, value) VALUES (NULL, 'primary8_${i}', '#ff51b5ff');
+            INSERT INTO cpuso_css_variables (id, name, value) VALUES (NULL, 'primary91_${i}', '${Math.random()}');
+            INSERT INTO cpuso_css_variables (id, name, value) VALUES (NULL, 'primary92_${i}', '${Math.random()}');
+            INSERT INTO cpuso_css_variables (id, name, value) VALUES (NULL, 'primary93_${i}', '${Math.random()}');
+            CREATE TABLE some_new_table_${i} (id INTEGER PRIMARY KEY, field TEXT);
+            INSERT INTO some_new_table_${i} (id, field) VALUES (NULL, 'field_value_${i}');
+            `;
+
+            if (i % 333 === 0) {
+                db.iterateStatements(`DELETE FROM cpuso_css_variables;`);
+            }
+
+            await new Promise((res)=>setTimeout(res, 5)); // small delay to be sure syncedAt is in the past
+            await db.iterateStatements(buggyQueries);
+
+            console.log('---generating patch for step', i);
+
+            const binaryPatch = await db.getBinaryPatch();
+            const patch = concatUint8Arrays([new Uint8Array([2]), binaryPatch]);
+            // console.log(patch);
+            extraPaches.push(patch);
+
+            binaryForPatches[i] = await db.export();
+
+            // db.syncedAt = Date.now();
+            // await db.replace(binaryBase);
+            // await new Promise((res)=>setTimeout(res, 5)); // small delay to be sure syncedAt is in the past
+
+            // let j = 0;
+            // for (const p of extraPaches) {
+            //     const applied = await db.suiSqlSync.applyPatch(p);
+            //     await new Promise((res)=>setTimeout(res, 5)); // small delay to be sure syncedAt is in the past
+            //     // console.log(i, 'applied extra patch:', applied);
+
+            //     const pragma = await db.query("PRAGMA integrity_check;");
+            //     if (pragma[0]['integrity_check'] !== 'ok') {
+            //         const currentBinary = await db.export();
+            //         const expectedBinary = binaryForPatches[j];
+
+            //         console.log('Equal?', compareUint8Arrays(currentBinary, expectedBinary));
+            //         console.log('Current binary length:', currentBinary.length, expectedBinary.length);
+
+            //         fs.writeFileSync('./wegot.bin', Buffer.from(currentBinary));
+            //         fs.writeFileSync('./wewant.bin', Buffer.from(expectedBinary));
+
+            //         console.error('Integrity check failed after applying extra patch at iteration', i);
+            //         console.log(pragma);
+            //         throw new Error('Integrity check failed');
+            //     }
+            //     j++;
+            // }
+
+            // binaryBase = new Uint8Array(await db.export());
+        }
+
+        // dispatchEvendt; 
+
+        // await db.replace(binaryBase);
+
+        let prevBinary = null;
+
+        let i = 0;
+        for (const p of extraPaches) {
+            // replace db into base state
+            await db.replace(binaryBase);
+
+            const applied = await db.suiSqlSync.applyPatch(p);
+            console.log(i, 'applied extra patch:', applied);
+
+            const currentBinary = await db.export();
+            const expectedBinary = binaryForPatches[i];
+            // console.log('Equal?', compareUint8Arrays(currentBinary, expectedBinary));
+
+            const equal = compareUint8Arrays(currentBinary, expectedBinary);
+            if (!equal) {
+                console.log('Not equal at iteration', i);
+            }
+
+            let pragma = null;
+            try {
+                pragma = await db.query("PRAGMA integrity_check;");
+            } catch (e) {
+                console.error('Error during integrity check at iteration', i, e);
+                pragma = null;
+            }
+
+            if (!equal) { // || pragma === null || pragma[0]['integrity_check'] !== 'ok') {
+                console.error('Integrity check failed after applying extra patch at iteration', i);
+                console.log(pragma);
+
+                throw new Error('Integrity check failed, at patch '+i);
+            }
+
+            prevBinary = Uint8Array.from(currentBinary);
+            i++;
+        }
+
+        const res2 = await db.query("SELECT * FROM cpuso_settings");
+        console.log('res:', res2);
+        const cssRes = await db.query("SELECT * FROM cpuso_css_variables");
+        console.log('cssRes:', cssRes);
+
+        await db.listTables();
+
+        const buggyQueries = `
+        INSERT OR REPLACE INTO cpuso_settings (name, value) VALUES ('appName', 'CPUso');       
+        INSERT OR REPLACE INTO cpuso_css_variables (name, value) VALUES ('primary', '#5651b5ff');
+        `;
+
+        await db.iterateStatements(buggyQueries); // should not throw
+
+        const binary =  await db.export();
+
+        console.log('Final database size:', binary.length);
+
+    });
+});

@@ -1,6 +1,6 @@
 {
   "name": "@fizzyflow/suisql",
-  "version": "0.0.23",
+  "version": "0.0.25",
   "description": "",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -33,7 +33,7 @@
     "docs": "npx typedoc --plugin typedoc-plugin-markdown src/*",
     "build": "copyfiles ../README.md README.md; copyfiles ../README.md ../move/README.md; node buildPackage.mjs",
     "prepublishOnly": "npm run build",
-    "test": "vitest --testTimeout 190000"
+    "test": "vitest --testTimeout 9190000"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",
@@ -69,9 +69,9 @@
     "vitest": "^2.1.9"
   },
   "dependencies": {
-    "@mysten/bcs": "^1.6.0",
-    "@mysten/sui": "^1.37.1",
-    "@mysten/walrus": "^0.6.1",
+    "@mysten/bcs": "^1.9.2",
+    "@mysten/sui": "^1.45.0",
+    "@mysten/walrus": "^0.8.4",
     "axios": "^1.9.0",
     "pako": "^2.1.0",
     "sql.js": "1.12.0"

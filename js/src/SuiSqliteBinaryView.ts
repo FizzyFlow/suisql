@@ -83,8 +83,6 @@ export default class SuiSqliteBinaryView {
                 pos = pos + 4;
                 const patch = decompressed.slice(pos, pos + patchSize);
 
-                console.log(patch);
-
                 const current = this.getPage(pageNumber);
                 const patched = SuiSqlBinaryPatch.applyPatch(current, patch);
                 pos = pos + patchSize;
@@ -141,7 +139,6 @@ export default class SuiSqliteBinaryView {
                     const page2 = this.getPage(i);
 
                     const diff = SuiSqlBinaryPatch.binaryDiff(page1, page2);
-                    console.log('patch', diff);
 
                     patchParts.push(new Uint8Array([1]));    // 1 means "patch page"
                     patchParts.push(int32ToUint8ArrayBE(i)); // page number
@@ -178,7 +175,7 @@ export default class SuiSqliteBinaryView {
     }
 
     async getPageSha256(pageNumber: number) {
-        const digest = await globalThis.crypto.subtle.digest("SHA-256", this.getPage(pageNumber));
+        const digest = await globalThis.crypto.subtle.digest("SHA-256", this.getPage(pageNumber) as BufferSource);
         return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('');
     }
 

@@ -178,7 +178,7 @@ export default class SuiSqlBlockchain {
         let walrusStorageSize: number | null = null;
         let expectedWalrusBlobId = null;
         let owner = null;
-
+        let name = null;
 
         if (result?.data?.content) {
             const fields = (result.data.content as any).fields;
@@ -197,6 +197,9 @@ export default class SuiSqlBlockchain {
             if (fields && fields.walrus_blob && fields.walrus_blob.fields && fields.walrus_blob.fields.storage) {
                 walrusStorageSize = parseInt(''+fields.walrus_blob.fields.storage.fields.storage_size);
             }
+            if (fields && fields.name) {
+                name = fields.name;
+            }
 
             if (result.data.owner) {
                 owner = (result.data.owner as SuiSqlOwnerType);
@@ -209,7 +212,8 @@ export default class SuiSqlBlockchain {
             walrusEndEpoch,
             walrusStorageSize,
             expectedWalrusBlobId,
-            owner, 
+            owner,
+            name,
         };
     }
 
@@ -424,7 +428,7 @@ export default class SuiSqlBlockchain {
             const txResults = await this.executeTx(tx);
             return true;
         } catch (e) {
-            console.error('fillExpectedWalrus error', e);
+            console.error('clampWithWalrus error', e);
             return false;
         }
     }
@@ -439,8 +443,6 @@ export default class SuiSqlBlockchain {
         /// no need for write cap here
         const tx = new Transaction();
         const target = ''+packageId+'::suisql::fill_expected_walrus';
-
-        console.log(dbId, walrusSystemAddress, blobAddress);
 
         const args = [
             tx.object(dbId),

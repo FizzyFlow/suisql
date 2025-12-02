@@ -1,14 +1,5 @@
-
-// import { BlobEncoder } from '@mysten/walrus-wasm';
-
-// import type { SuiClient } from '@mysten/sui/client';
-
-
 import type { Signer } from '@mysten/sui/cryptography';
 
-import { getFullnodeUrl } from '@mysten/sui/client';
-// import { WalrusClient } from "./walrusSdk2";
-// import type { WalrusClient } from '@mysten/walrus';
 import SuiSqlLog from './SuiSqlLog.js';
 
 import type { WalrusClient, RegisterBlobOptions, CertifyBlobOptions } from '@mysten/walrus';
@@ -181,7 +172,7 @@ export default class SuiSqlWalrus {
 
     async writeToPublisher(data: Uint8Array): Promise<{ blobId: bigint, blobObjectId: string } | null> {
         const form = new FormData();
-        form.append('file', new Blob([data]));
+        form.append('file', new Blob([(data as BlobPart)]));
         
         const publisherUrl = this.publisherUrl+'/v1/blobs?deletable=true&send_object_to='+this.getCurrentAddress();
         SuiSqlLog.log('writing blob to walrus via publisher', form);
@@ -235,6 +226,10 @@ export default class SuiSqlWalrus {
     }
 
     async write2(data: Uint8Array):  Promise<{ blobId: bigint, blobObjectId: string } | null> {
+        if (this.publisherUrl && this.currentWalletAddress) {
+            return await this.writeToPublisher(data);
+        }
+
         if (!this.walrusClient || !this.chain) {
             return null;
         }

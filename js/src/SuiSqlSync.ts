@@ -6,8 +6,8 @@ import type { SuiSqlOwnerType } from "./SuiSqlBlockchain.js";
 // import { Transaction } from "@mysten/sui/transactions";
 // import { bcs } from '@mysten/sui/bcs';
 
-import { compress, decompress, concatUint8Arrays } from "./SuiSqlUtils.js";
-import { maxBinaryArgumentSize, maxMoveObjectSize } from "./SuiSqlConsts.js";
+import { compress, decompress, concatUint8Arrays, uint8ArrayToBase64 } from "./SuiSqlUtils.js";
+import { maxBinaryArgumentSize, maxMoveObjectSize, walrusSystemObjectIds } from "./SuiSqlConsts.js";
 // import { packages } from "./SuiSqlConsts";
 
 import { blobIdFromInt } from './SuiSqlUtils.js';
@@ -198,6 +198,9 @@ export default class SuiSqlSync {
         const id = (this.id as string);
         const fields = await this.chain.getFields(id);
 
+        if (!this.name && fields.name) {
+            this.name = fields.name;
+        }
         if (fields.walrusBlobId) {
             this.walrusBlobId = blobIdFromInt(fields.walrusBlobId); // as base64
             await this.loadFromWalrus(fields.walrusBlobId); // as int
@@ -227,6 +230,17 @@ export default class SuiSqlSync {
         await new Promise((res)=>setTimeout(res, 5)); // small delay to be sure syncedAt is in the past
 
         return true;
+    }
+
+    async getWalrusSystemObjectId() {
+        if ((walrusSystemObjectIds as any)[this.network]) {
+            return (walrusSystemObjectIds as any)[this.network];
+        }
+        if (this.walrus) {
+            return await  this.walrus.getSystemObjectId();
+        }
+
+        throw new Error('no walrus client provided to get walrus system object id');
     }
 
     async syncToBlockchain(params?: SuiSqlSyncToBlobckchainParams) {
@@ -283,7 +297,7 @@ export default class SuiSqlSync {
                     throw new Error('not enough params to save walrus blob');
                 }
     
-                const systemObjectId = await this.walrus.getSystemObjectId();
+                const systemObjectId = await this.getWalrusSystemObjectId();
     
                 if (!systemObjectId) {
                     throw new Error('can not get walrus system object id from walrusClient');
@@ -297,6 +311,7 @@ export default class SuiSqlSync {
                 this.syncedAt = Date.now();
     
                 const wrote = await this.walrus.write2(full);
+
                 if (!wrote || !wrote.blobObjectId) {
                     throw new Error('can not write to walrus');
                 }
@@ -304,6 +319,7 @@ export default class SuiSqlSync {
                 success = await this.chain.clampWithWalrus(this.id, wrote.blobObjectId, systemObjectId);
 
                 if (success) {
+                    this.patchesTotalSize = 0; // reset patches size as we have full clamp now
                     this.walrusBlobId = blobIdFromInt(wrote.blobId); // as base64
                 } 
             } else {
@@ -317,6 +333,10 @@ export default class SuiSqlSync {
                 SuiSqlLog.log('saving patch', (patchTypeByte == 1 ? 'sql' : 'binary'), 'bytes:', selectedPatch.length);
                 this.syncedAt = Date.now();
                 success = await this.chain.savePatch(this.id, concatUint8Arrays([new Uint8Array([patchTypeByte]), selectedPatch]), expectedBlobId ? expectedBlobId : undefined);
+
+                if (success) {
+                    this.patchesTotalSize = this.patchesTotalSize + selectedPatch.length;
+                }
             }
 
         } catch (e) {
@@ -406,6 +426,7 @@ export default class SuiSqlSync {
 
                 if (success) {
                     this.walrusBlobId = blobIdFromInt(status.blobId); // as base64
+                    this.patchesTotalSize = 0; // reset patches size as we have full clamp now
                 } 
 
                 return success;

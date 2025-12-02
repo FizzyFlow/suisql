@@ -1,6 +1,6 @@
 const maxPureArgumentSize = 16 * 1024; // todo: add base64 conversion K
 const maxBinaryArgumentSize = Math.floor(3 * maxPureArgumentSize / 4) - 4;
-const maxMoveObjectSize = 250 * 1024;
+const maxMoveObjectSize = 15 * 1024; // keep it safer than Sui limit,
 
 const packages:Object = {
         local: '0x9010c9927792bca9df88323ea0fce0605d141a6d4d95e8e82697f0a810196144',
@@ -20,6 +20,11 @@ const bankIds:Object = {
     testnet: '0xf019aeaca553f968ce5a21f550a0a9ad1ce51d27d8f70c247e9a25e17c02e138',
 };
 
+const walrusSystemObjectIds:Object = {
+    mainnet: '0x2134d52768ea07e8c43570ef975eb3e4c27a39fa6396bef985b5abc58d03ddd2',
+    testnet: '0x6c2547cbbc38025cf3adac45f63cb0a8d12ecf777cdc75a4971612bf97fdf6af',
+};
+
 export {
     maxPureArgumentSize,
     maxBinaryArgumentSize,
@@ -27,4 +32,5 @@ export {
     packages,
     originalPackages,
     bankIds,
+    walrusSystemObjectIds,
 };

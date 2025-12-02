@@ -18,267 +18,248 @@ if (!privateKey) {
     throw new Error('Please create a file .privatekey with your private key in format of suiprivkey1...');
 }
 
-describe("update existing db with walrus", () => {
-    it("to nodes", {}, async () => {
+const chain = 'testnet';
+const randomDbName = 'testdb_' + Math.random().toString(36).substring(2, 15);
 
-        const suiMasterTestnet = new SuiMaster({client: 'mainnet', privateKey: privateKey, debug: true});
-        await suiMasterTestnet.initialize();
+const sampleDbNames = {
+    mainnet: 'testdb_wdsx7pwjl6c',
+    testnet: 'testdb_wdsx7pwjl6c',
+};
+const sampleDbIds = {
+    mainnet: '0x17ca21f96da213031c1595ccd0108dc1fee50cead1a0b77ff14ac495b30db105',
+    testnet: '0x17ca21f96da213031c1595ccd0108dc1fee50cead1a0b77ff14ac495b30db105',
+};
+const aggregators = {
+    mainnet: 'https://aggregator.walrus-mainnet.walrus.space',
+    testnet: 'https://aggregator.walrus-testnet.walrus.space',
+};
+const publishers = {
+    mainnet: 'https://publisher.walrus-mainnet.walrus.space',
+    testnet: 'https://publisher.walrus-01.tududes.com',
+};
 
-        try {
-            await suiMasterTestnet.requestSuiFromFaucet();
-        } catch (e) {
-            // ok, if you have testnet sui in wallet
-            console.error(e);
-        }
+let suiMaster = null;
 
+describe('initialize connection to blockchain', () => {
+    it("initialized", {}, async () => {
+        suiMaster = new SuiMaster({client: chain, privateKey: privateKey, debug: true});
+        await suiMaster.initialize();
+        expect(suiMaster).toBeTruthy();
+        expect(suiMaster.client).toBeTruthy(); // for new SuiSQL({ ... suiClient: ...})
+        expect(suiMaster.signer).toBeTruthy(); // for new SuiSQL({ ... signer: ...})
+        expect(suiMaster.address).toBeTruthy();  
+    });
+});
 
+const addCustomRowSyncAndCheckBack = async(db, params = {}) => {
+    // 1 - check if there's employees table in the db.
+    // 2 - add a row with unique name to it and sync to blockhain
+    // 3 - reload the db and check if the row is there
+    // 4 - remove the row and sync to blockchain again
+    // 5 - reload the db and check if the row is gone
+    const { 
+        forceWalrus = false, // sync as walrus on the  step 2
+    } = params;
+
+    const testValue = 'CHECK_' + Math.random();
+
+    const res = await db.query("SELECT designation,COUNT(*) AS nbr, (AVG(salary)) AS avg_salary FROM employees GROUP BY designation ORDER BY avg_salary DESC;");
+
+    expect(res).toBeTruthy();
+    expect(res.length).toBeGreaterThan(0);
+
+    const countRes = await db.query("SELECT COUNT(*) AS cnt FROM employees;");
+
+    if (countRes[0].cnt > 50) {
+        await db.query(`DELETE FROM employees WHERE designation = 'BRO';`);
+    }
+
+    await db.iterateStatements(`
+            INSERT INTO employees VALUES (NULL,'${testValue}','BRO',9,'1985-10-12',25000,NULL,1);
+            `);
+    
+    await db.sync({ forceWalrus: forceWalrus });
+
+    const reloadedDb = await db.database(db.name);
+
+    const testRes = await reloadedDb.query(`SELECT * FROM employees WHERE name = '${testValue}';`);
+
+    expect(testRes).toBeTruthy();
+    expect(testRes.length).toBe(1);
+    expect(testRes[0].name).toBe(testValue);
+
+    await db.iterateStatements(`
+            DELETE FROM employees WHERE name = '${testValue}';
+            `);
+
+    await db.sync({  }); // save as patch
+
+    const reloadedDb2 = await db.database(db.name);
+
+    const testRes2 = await reloadedDb2.query(`SELECT * FROM employees WHERE name = '${testValue}';`);
+
+    expect(testRes2).toBeTruthy();
+    expect(testRes2.length).toBe(0);
+};
+
+describe('load existing db', () => {
+    it("loads existing database by its id", {}, async () => {
         const db = new SuiSql({
-                name: 'test33343433332',
-                network: 'mainnet',
-                aggregatorUrl: 'https://aggregator.walrus-mainnet.walrus.space',
-                // publisherUrl: 'https://publisher.walrus-01.tududes.com',
-                suiClient: suiMasterTestnet.client,
-                walrusClient: walrusClientMock.mainnetNoRelay,
-                signer: suiMasterTestnet.signer,
+                id: sampleDbIds[chain],
+                network: chain,
+                aggregatorUrl: aggregators[chain],
+                publisherUrl:  publishers[chain], //'https://publisher.walrus-01.tududes.com'
+                suiClient: suiMaster.client,
+                walrusClient: walrusClientMock[`${chain}NoRelay`],
+                signer: suiMaster.signer,
                 debug: true
             });
 
 
-        const state = await db.initialize();
+        const res = await db.query("SELECT designation,COUNT(*) AS nbr, (AVG(salary)) AS avg_salary FROM employees GROUP BY designation ORDER BY avg_salary DESC;");
 
-        expect(db.hasUnsavedChanges()).toBeFalsy();
+        expect(res).toBeTruthy();
+        expect(res.length).toBeGreaterThan(0);
 
-
-        if (state == 'EMPTY') {
-            await db.iterateStatements(`
-                DROP TABLE IF EXISTS employees;
-                CREATE TABLE employees( id integer primary key,  name    text,
-                              designation text,     manager integer,
-                              hired_on    date,     salary  integer,
-                              commission  float,    dept    integer);
-    
-                INSERT INTO employees VALUES (NULL,'JOHNSON','ADMIN',6,'1990-12-17',18000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'HARDING','MANAGER',9,'1998-02-02',52000,300,3);
-                INSERT INTO employees VALUES (NULL,'TAFT','SALES I',2,'1996-01-02',25000,500,3);
-                INSERT INTO employees VALUES (NULL,'HOOVER','SALES I',2,'1990-04-02',27000,NULL,3);
-                INSERT INTO employees VALUES (NULL,'LINCOLN','TECH',6,'1994-06-23',22500,1400,4);
-                INSERT INTO employees VALUES (NULL,'GARFIELD','MANAGER',9,'1993-05-01',54000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'POLK','TECH',6,'1997-09-22',25000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'GRANT','ENGINEER',10,'1997-03-30',32000,NULL,2);
-                INSERT INTO employees VALUES (NULL,'JACKSON','CEO',NULL,'1990-01-01',75000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'FILLMORE','MANAGER',9,'1994-08-09',56000,NULL,2);
-                INSERT INTO employees VALUES (NULL,'ADAMS','ENGINEER',10,'1996-03-15',34000,NULL,2);
-                INSERT INTO employees VALUES (NULL,'WASHINGTON','ADMIN',6,'1998-04-16',18000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'MONROE','ENGINEER',10,'2000-12-03',30000,NULL,2);
-                INSERT INTO employees VALUES (NULL,'ROOSEVELT','CPA',9,'1995-10-12',35000,NULL,1);
-                `);
-    
-            // row:  { id: 1, name: 'JOHNSON', designation: 'ADMIN', manager: 6 ... }
-            // row:  { id: 2, name: 'HARDING', designation: 'MANAGER', manager: 9 ... }
-            // row:  { id: 3, name: 'TAFT', designation: 'SALES I', manager: 2 ... }
-
-            expect(db.hasUnsavedChanges()).toBeTruthy();
-    
-            await db.sync();
-        }
-
-        await db.run("UPDATE employees SET name = 'TAFT_UUUP' WHERE name = 'TAFT';");
-
-        await db.sync({ 
-            forceWalrus: true,
-        });
-
-
-        // await db.sync({ 
-        //     forceWalrus: true,
-        // });
-        // return;
-        // await db.run("UPDATE employees SET name = 'GARFIELD_UPDATED' WHERE name = 'GARFIELD';");
-
-        // console.log(await db.listTables());
-        
-        // console.log(db.walrusEndEpoch);
-
-        // const currentEpoch = await db.suiSqlSync.walrus.getSystemCurrentEpoch();
-
-        // console.log(currentEpoch);
-
-        // return;
-
-        // // console.log( await db.describeTable('employees') );
-
-        // await db.sync({ 
-        //     forceWalrus: true,
-        // });
-        // await db.extendWalrus(2);
-
-        // console.log(db.walrusEndEpoch);
-
-        // return;
-
-        // await db.sync.fillExpectedWalrus();
-
-
-    //     // console.log(db.id);
-    //     const res = await db.prepare("SELECT designation,COUNT(*) AS nbr, (AVG(salary)) AS avg_salary FROM employees GROUP BY designation ORDER BY avg_salary DESC;");
-    //     const count = await res.forEach((row)=>{
-    //         console.log(row);
-    //         // row:  { designation: 'CEO', nbr: 1, avg_salary: 75000 }
-    //         // row:  { designation: 'MANAGER', nbr: 3, avg_salary: 54000 }
-    //         // row:  { designation: 'CPA', nbr: 1, avg_salary: 35000 }
-    //         // row:  { designation: 'ENGINEER', nbr: 3, avg_salary: 32000 }
-    //         // row:  { designation: 'SALES I', nbr: 2, avg_salary: 26000 }
-    //         // row:  { designation: 'TECH', nbr: 2, avg_salary: 23750 }
-    //         // row:  { designation: 'ADMIN', nbr: 2, avg_salary: 18000 }
-    //     });
-
-    //     const res3 = await db.prepare("SELECT * FROM sqlite_schema");
-    //     const count3 = await res3.forEach((row)=>{
-    //         console.log(row);
-    // //     });
-
-    //     const res2 = await db.prepare("SELECT * FROM employees;");
-    //     const count2 = await res2.forEach((row)=>{
-    //         console.log(row);
-    //         // row:  { designation: 'CEO', nbr: 1, avg_salary: 75000 }
-    //         // row:  { designation: 'MANAGER', nbr: 3, avg_salary: 54000 }
-    //         // row:  { designation: 'CPA', nbr: 1, avg_salary: 35000 }
-    //         // row:  { designation: 'ENGINEER', nbr: 3, avg_salary: 32000 }
-    //         // row:  { designation: 'SALES I', nbr: 2, avg_salary: 26000 }
-    //         // row:  { designation: 'TECH', nbr: 2, avg_salary: 23750 }
-    //         // row:  { designation: 'ADMIN', nbr: 2, avg_salary: 18000 }
-    //     });
+        // after initialize();
+        expect(db.name).toBe(sampleDbNames[chain]);
+        expect(db.id).toBe(sampleDbIds[chain]);
     });
 
-
-    it("via relay", {}, async () => {
-
-        const suiMasterTestnet = new SuiMaster({client: 'mainnet', privateKey: privateKey, debug: true});
-        await suiMasterTestnet.initialize();
-
-        try {
-            await suiMasterTestnet.requestSuiFromFaucet();
-        } catch (e) {
-            // ok, if you have testnet sui in wallet
-            console.error(e);
-        }
-
-
+    it("loads existing database by its name", {}, async () => {
         const db = new SuiSql({
-                name: 'test33343433332',
-                network: 'mainnet',
-                aggregatorUrl: 'https://aggregator.walrus-mainnet.walrus.space',
-                // publisherUrl: 'https://publisher.walrus-01.tududes.com',
-                suiClient: suiMasterTestnet.client,
-                walrusClient: walrusClientMock.mainnet,
-                signer: suiMasterTestnet.signer,
+                name: sampleDbNames[chain],
+                network: chain,
+                aggregatorUrl: aggregators[chain],
+                publisherUrl:  publishers[chain], //'https://publisher.walrus-01.tududes.com'
+                suiClient: suiMaster.client,
+                walrusClient: walrusClientMock[`${chain}NoRelay`],
+                signer: suiMaster.signer,
                 debug: true
             });
 
+        const res = await db.query("SELECT designation,COUNT(*) AS nbr, (AVG(salary)) AS avg_salary FROM employees GROUP BY designation ORDER BY avg_salary DESC;");
 
-        const state = await db.initialize();
+        expect(res).toBeTruthy();
+        expect(res.length).toBeGreaterThan(0);
 
-        expect(db.hasUnsavedChanges()).toBeFalsy();
+        // after initialize();
+        expect(db.name).toBe(sampleDbNames[chain]);
+        expect(db.id).toBe(sampleDbIds[chain]);
 
-
-        if (state == 'EMPTY') {
-            await db.iterateStatements(`
-                DROP TABLE IF EXISTS employees;
-                CREATE TABLE employees( id integer primary key,  name    text,
-                              designation text,     manager integer,
-                              hired_on    date,     salary  integer,
-                              commission  float,    dept    integer);
-    
-                INSERT INTO employees VALUES (NULL,'JOHNSON','ADMIN',6,'1990-12-17',18000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'HARDING','MANAGER',9,'1998-02-02',52000,300,3);
-                INSERT INTO employees VALUES (NULL,'TAFT','SALES I',2,'1996-01-02',25000,500,3);
-                INSERT INTO employees VALUES (NULL,'HOOVER','SALES I',2,'1990-04-02',27000,NULL,3);
-                INSERT INTO employees VALUES (NULL,'LINCOLN','TECH',6,'1994-06-23',22500,1400,4);
-                INSERT INTO employees VALUES (NULL,'GARFIELD','MANAGER',9,'1993-05-01',54000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'POLK','TECH',6,'1997-09-22',25000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'GRANT','ENGINEER',10,'1997-03-30',32000,NULL,2);
-                INSERT INTO employees VALUES (NULL,'JACKSON','CEO',NULL,'1990-01-01',75000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'FILLMORE','MANAGER',9,'1994-08-09',56000,NULL,2);
-                INSERT INTO employees VALUES (NULL,'ADAMS','ENGINEER',10,'1996-03-15',34000,NULL,2);
-                INSERT INTO employees VALUES (NULL,'WASHINGTON','ADMIN',6,'1998-04-16',18000,NULL,4);
-                INSERT INTO employees VALUES (NULL,'MONROE','ENGINEER',10,'2000-12-03',30000,NULL,2);
-                INSERT INTO employees VALUES (NULL,'ROOSEVELT','CPA',9,'1995-10-12',35000,NULL,1);
-                `);
-    
-            // row:  { id: 1, name: 'JOHNSON', designation: 'ADMIN', manager: 6 ... }
-            // row:  { id: 2, name: 'HARDING', designation: 'MANAGER', manager: 9 ... }
-            // row:  { id: 3, name: 'TAFT', designation: 'SALES I', manager: 2 ... }
-
-            expect(db.hasUnsavedChanges()).toBeTruthy();
-    
-            await db.sync();
-        }
-
-        await db.run("UPDATE employees SET name = 'TAFT_UUUP' WHERE name = 'TAFT';");
-
-        await db.sync({ 
-            forceWalrus: true,
-        });
-
-
-        // await db.sync({ 
-        //     forceWalrus: true,
-        // });
-        // return;
-        // await db.run("UPDATE employees SET name = 'GARFIELD_UPDATED' WHERE name = 'GARFIELD';");
-
-        // console.log(await db.listTables());
-        
-        // console.log(db.walrusEndEpoch);
-
-        // const currentEpoch = await db.suiSqlSync.walrus.getSystemCurrentEpoch();
-
-        // console.log(currentEpoch);
-
-        // return;
-
-        // // console.log( await db.describeTable('employees') );
-
-        // await db.sync({ 
-        //     forceWalrus: true,
-        // });
-        // await db.extendWalrus(2);
-
-        // console.log(db.walrusEndEpoch);
-
-        // return;
-
-        // await db.sync.fillExpectedWalrus();
-
-
-    //     // console.log(db.id);
-    //     const res = await db.prepare("SELECT designation,COUNT(*) AS nbr, (AVG(salary)) AS avg_salary FROM employees GROUP BY designation ORDER BY avg_salary DESC;");
-    //     const count = await res.forEach((row)=>{
-    //         console.log(row);
-    //         // row:  { designation: 'CEO', nbr: 1, avg_salary: 75000 }
-    //         // row:  { designation: 'MANAGER', nbr: 3, avg_salary: 54000 }
-    //         // row:  { designation: 'CPA', nbr: 1, avg_salary: 35000 }
-    //         // row:  { designation: 'ENGINEER', nbr: 3, avg_salary: 32000 }
-    //         // row:  { designation: 'SALES I', nbr: 2, avg_salary: 26000 }
-    //         // row:  { designation: 'TECH', nbr: 2, avg_salary: 23750 }
-    //         // row:  { designation: 'ADMIN', nbr: 2, avg_salary: 18000 }
-    //     });
-
-    //     const res3 = await db.prepare("SELECT * FROM sqlite_schema");
-    //     const count3 = await res3.forEach((row)=>{
-    //         console.log(row);
-    // //     });
-
-    //     const res2 = await db.prepare("SELECT * FROM employees;");
-    //     const count2 = await res2.forEach((row)=>{
-    //         console.log(row);
-    //         // row:  { designation: 'CEO', nbr: 1, avg_salary: 75000 }
-    //         // row:  { designation: 'MANAGER', nbr: 3, avg_salary: 54000 }
-    //         // row:  { designation: 'CPA', nbr: 1, avg_salary: 35000 }
-    //         // row:  { designation: 'ENGINEER', nbr: 3, avg_salary: 32000 }
-    //         // row:  { designation: 'SALES I', nbr: 2, avg_salary: 26000 }
-    //         // row:  { designation: 'TECH', nbr: 2, avg_salary: 23750 }
-    //         // row:  { designation: 'ADMIN', nbr: 2, avg_salary: 18000 }
-    //     });
     });
+
+
+
+    let newDb = null;
+    it("make new  database and save it on the blockchain", {}, async () => {
+        const randomDbName = 'random_database_name_' + Math.random().toString(36).substring(2, 15) + '_' + Math.random().toString(36).substring(2, 15);
+        newDb = new SuiSql({
+                name: randomDbName,
+                network: chain,
+                suiClient: suiMaster.client,
+                signer: suiMaster.signer,
+
+                aggregatorUrl: aggregators[chain],
+                walrusClient: walrusClientMock[`${chain}NoRelay`],
+
+                debug: true
+            });
+
+        await newDb.initialize();
+
+        expect(newDb.state).toBe('EMPTY'); // EMPTY - new, OK - loaded, 
+
+        await newDb.iterateStatements(`
+            DROP TABLE IF EXISTS employees;
+            CREATE TABLE employees( id integer primary key,  name    text,
+                            designation text,     manager integer,
+                            hired_on    date,     salary  integer,
+                            commission  float,    dept    integer);
+
+            INSERT INTO employees VALUES (NULL,'JOHNSON','ADMIN',6,'1990-12-17',18000,NULL,4);`);
+
+        const res = await newDb.query("SELECT * FROM employees;");
+
+        expect(res).toBeTruthy();
+        expect(res.length).toBe(1);
+
+        await addCustomRowSyncAndCheckBack(newDb, { forceWalrus: false });
+    });
+
+    it("fill it with data until it overloads sui limits and goes to walrus automatically rebating sui storage", {}, async () => {
+        const instance = await newDb.database(newDb.name);
+        await instance.initialize();
+
+        let addedRows = 0;
+        do {
+            const addNRowsPerSync = 500;
+            let queries = '';
+            for (let i = 0; i < addNRowsPerSync; i++) {
+                queries += `
+                    INSERT INTO employees VALUES (NULL,'Fillah${Math.random().toString(36).substring(2, 15)}','FILLER',6,'1990-12-17',18000,NULL,4);
+                `;
+            }
+            await instance.iterateStatements(queries);
+            await instance.sync({  });
+        console.log('Database has deployed to walrus with blob id:', instance.suiSqlSync, instance.suiSqlSync.walrusBlobId);
+            addedRows += addNRowsPerSync;
+
+        } while (!(instance?.suiSqlSync?.walrusBlobId));
+
+        console.log('Database has deployed to walrus with blob id:', instance.suiSqlSync, instance.suiSqlSync.walrusBlobId);
+
+        const checkInstance = await newDb.database(instance.name);
+        await checkInstance.initialize();
+
+        const countRes = await checkInstance.query("SELECT COUNT(*) AS cnt FROM employees WHERE designation = 'FILLER';");
+        expect(countRes[0].cnt).toBe(addedRows);
+    });
+
+    it("loads existing database and commit patch to it on walrus (raw mode, to nodes directly)", {}, async () => {
+        const db = new SuiSql({
+                name: sampleDbNames[chain],
+                network: chain,
+                aggregatorUrl: aggregators[chain],
+                walrusClient: walrusClientMock[`${chain}NoRelay`],
+                suiClient: suiMaster.client,
+                signer: suiMaster.signer,
+                currentWalletAddress: suiMaster.address,
+                debug: true
+            });
+
+        await addCustomRowSyncAndCheckBack(db, { forceWalrus: true });
+    });
+
+    it("loads existing database and commit patch to it on walrus with publisher (and check it's saved correctly)", {}, async () => {
+        const db = new SuiSql({
+                name: sampleDbNames[chain],
+                network: chain,
+                aggregatorUrl: aggregators[chain],
+                publisherUrl:  publishers[chain], 
+                suiClient: suiMaster.client,
+                signer: suiMaster.signer,
+                currentWalletAddress: suiMaster.address,
+                debug: true
+            });
+
+        await addCustomRowSyncAndCheckBack(db, { forceWalrus: true });
+    });
+
+    it("loads existing database and commit patch to it on walrus with upload relay (and check it's saved correctly)", {}, async () => {
+        const db = new SuiSql({
+                name: sampleDbNames[chain],
+                network: chain,
+                aggregatorUrl: aggregators[chain],
+                walrusClient: walrusClientMock[chain],
+                suiClient: suiMaster.client,
+                signer: suiMaster.signer,
+                currentWalletAddress: suiMaster.address,
+                debug: true
+            });
+
+        await addCustomRowSyncAndCheckBack(db, { forceWalrus: true });
+    });
+
+
 });

@@ -49,8 +49,8 @@ enum State {
 
 export default class SuiSql {
 
-    public id?: string;
-    public name?: string;
+    public _id?: string;
+    public _name?: string;
 
     private suiClient?: SuiClient;
 
@@ -84,21 +84,21 @@ export default class SuiSql {
         }
 
         if (params.id) {
-            this.id = params.id;
+            this._id = params.id;
         }
         if (params.name) {
-            this.name = params.name;
+            this._name = params.name;
         }
         if (params.suiClient) {
             
             this.suiClient = params.suiClient;
 
-            if (this.id || this.name) {
+            if (this._id || this.name) {
                 this.suiSqlSync = new SuiSqlSync({
                     suiSql: this,
 
-                    id: this.id,
-                    name: this.name,
+                    id: this._id,
+                    name: this._name,
                     
                     suiClient: this.suiClient,
                     
@@ -116,6 +116,28 @@ export default class SuiSql {
         } else {
             throw new Error('SuiClient is required');
         }
+    }
+    
+    public get name() {
+        return this._name;
+    }
+
+    public get id() {
+        return this._id;
+    }
+
+    public get packageId() {
+        if (this.suiSqlSync && this.suiSqlSync.chain) {
+            return this.suiSqlSync.chain.getPackageId();
+        }
+        return null;
+    }
+
+    public get originalPackageId() {
+        if (this.suiSqlSync && this.suiSqlSync.chain) {
+            return this.suiSqlSync.chain.getOriginalPackageId();
+        }
+        return null;
     }
 
     get network() {
@@ -263,6 +285,10 @@ export default class SuiSql {
                 binary: data,
             });;
 
+            if (this._db) {
+                this._db.close();
+            }
+
             this._db = this.librarian.fromBinarySync(data);
             this.mostRecentWriteChangeTime = Date.now();
 
@@ -292,13 +318,15 @@ export default class SuiSql {
                     await this.suiSqlSync.syncFromBlockchain();
                     // that would also update this.state to OK in case there is something synced from the chain
     
-                    this.id = this.suiSqlSync.id;
-                    if (!this.id) {
+                    this._id = this.suiSqlSync.id;
+                    this._name = this.suiSqlSync.name;
+
+                    if (!this._id) {
                         SuiSqlLog.log('error initilizing');
 
                         this.state = State.ERROR;
                     } else {
-                        SuiSqlLog.log('db id', this.id);
+                        SuiSqlLog.log('db id', this._id);
                         this.mostRecentWriteChangeTime = Date.now();
 
                         if (this.suiSqlSync.hasBeenCreated) {

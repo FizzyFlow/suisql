@@ -55,12 +55,22 @@ export default class SuiSqlBinaryPatch {
 			const start = i;
 			while (i < a.length && a[i] !== b[i]) {
 				i++;
+			};
+
+			// also we can try to skip up to 8 same bytes to make patch smaller overall
+			let extraI = i;
+			while (extraI < a.length && a[extraI] === b[extraI] && (extraI - i) < 8) {
+				extraI++;
+			};
+
+			if (extraI - i > 0 && extraI - i < 8) {
+				i = extraI; // extend the diff to include these same bytes
 			}
 	
 			patch.push({
 				start,
-				length: i - start,
-				newBytes: b.slice(start, i),
+				length: (i - start + 1),
+				newBytes: b.slice(start, i + 1),
 			});
 		}
 	
