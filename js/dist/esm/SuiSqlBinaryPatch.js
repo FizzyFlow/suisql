@@ -40,10 +40,19 @@ class SuiSqlBinaryPatch {
       while (i < a.length && a[i] !== b[i]) {
         i++;
       }
+      ;
+      let extraI = i;
+      while (extraI < a.length && a[extraI] === b[extraI] && extraI - i < 8) {
+        extraI++;
+      }
+      ;
+      if (extraI - i > 0 && extraI - i < 8) {
+        i = extraI;
+      }
       patch.push({
         start,
-        length: i - start,
-        newBytes: b.slice(start, i)
+        length: i - start + 1,
+        newBytes: b.slice(start, i + 1)
       });
     }
     return patch;

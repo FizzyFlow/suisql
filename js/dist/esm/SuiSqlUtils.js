@@ -16,7 +16,7 @@ const anyShallowCopy = (input) => {
   }
 };
 const isSureWriteSql = (sql) => {
-  const checks = ["CREATE", "ALTER", "INSERT", "UPDATE", "DELETE", "DROP"];
+  const checks = ["CREATE", "ALTER", "INSERT", "UPDATE", "DELETE", "DROP", "VACUUM", "REINDEX", "REPLACE"];
   for (const check of checks) {
     if (sql.trim().toUpperCase().startsWith(check)) {
       return true;
@@ -35,8 +35,6 @@ const getFieldsFromCreateTableSql = (sql) => {
     const definition = field.trim().toLowerCase();
     ret.push(definition);
   }
-  console.log(ret);
-  console.log(ret);
   return ret;
 };
 const extractTopLevelParenthesesText = (str) => {
@@ -103,8 +101,27 @@ function blobIdIntFromBytes(blobId) {
 function blobIdToInt(blobId) {
   return BigInt(bcs.u256().fromBase64(blobId.replaceAll("-", "+").replaceAll("_", "/")));
 }
+function uint8ArrayToBase64(input) {
+  const normalized = Uint8Array.from(input);
+  let binary = "";
+  const len = normalized.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(normalized[i]);
+  }
+  return btoa(binary);
+}
+function base64ToUint8Array(base64) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
 export {
   anyShallowCopy,
+  base64ToUint8Array,
   bigintToUint8Array,
   blobIdFromBytes,
   blobIdFromInt,
@@ -117,6 +134,7 @@ export {
   idTo64,
   int32ToUint8ArrayBE,
   isSureWriteSql,
+  uint8ArrayToBase64,
   walrus64ToBigInt
 };
 //# sourceMappingURL=SuiSqlUtils.js.map

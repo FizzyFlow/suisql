@@ -21,10 +21,11 @@
     "fastify": "^4.27.0"
   },
   "devDependencies": {
-    "@mysten/sui": "^1.32.0",
-    "@mysten/walrus": "0.6.1",
-    "@fizzyflow/suisql": "^0.0.23",
-    "@polymedia/coinmeta": "^0.0.18",
+    "@fizzyflow/suisql": "^0.0.25",
+    "vue-sui": "1.45.2",
+    "suidouble": "1.45.2",
+    "@mysten/sui": "^1.45.2",
+    "@mysten/walrus": "^0.8.4",
     "@quasar/extras": "^1.16.17",
     "@quasar/vite-plugin": "^1.9.0",
     "@vitejs/plugin-vue": "^5.2.3",
@@ -39,12 +40,10 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vue": "^3.5.13",
     "vue-router": "^4.5.1",
-    "vue-sui": "1.32.0",
     "vue3-slide-up-down": "^2.1.0",
     "vuedraggable": "^2.24.3",
     "crypto-js": "^4.2.0",
     "simple-statistics": "^7.8.3",
-    "suidouble": "1.32.0",
     "tslib": "^2.8.1"
   },
   "eslintConfig": {

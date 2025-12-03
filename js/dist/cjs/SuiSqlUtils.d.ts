@@ -16,7 +16,7 @@ declare const anyShallowCopy: (input: Object | Array<any> | any) => Object | Arr
 declare const isSureWriteSql: (sql: string) => boolean;
 declare const getFieldsFromCreateTableSql: (sql: string) => Array<string> | null;
 declare const int32ToUint8ArrayBE: (num: number) => Uint8Array<ArrayBuffer>;
-declare const bigintToUint8Array: (bigint: bigint) => Uint8Array<ArrayBufferLike>;
+declare const bigintToUint8Array: (bigint: bigint) => Uint8Array<ArrayBuffer>;
 declare const idTo64: (id: bigint | number | string) => string;
 declare const walrus64ToBigInt: (v: string) => bigint;
 declare const concatUint8Arrays: (arrays: Uint8Array[]) => Uint8Array<ArrayBuffer>;
@@ -24,4 +24,6 @@ declare function blobIdFromInt(blobId: bigint | string): string;
 declare function blobIdFromBytes(blobId: Uint8Array): string;
 declare function blobIdIntFromBytes(blobId: Uint8Array): bigint;
 declare function blobIdToInt(blobId: string): bigint;
-export { anyShallowCopy, isSureWriteSql, compress, decompress, getFieldsFromCreateTableSql, int32ToUint8ArrayBE, bigintToUint8Array, idTo64, walrus64ToBigInt, concatUint8Arrays, blobIdFromInt, blobIdFromBytes, blobIdToInt, blobIdIntFromBytes, };
+declare function uint8ArrayToBase64(input: Uint8Array): string;
+declare function base64ToUint8Array(base64: string): Uint8Array;
+export { anyShallowCopy, isSureWriteSql, compress, decompress, getFieldsFromCreateTableSql, int32ToUint8ArrayBE, bigintToUint8Array, idTo64, walrus64ToBigInt, concatUint8Arrays, blobIdFromInt, blobIdFromBytes, blobIdToInt, blobIdIntFromBytes, uint8ArrayToBase64, base64ToUint8Array, };

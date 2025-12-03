@@ -36,7 +36,6 @@ class SuiSqliteBinaryView {
         const patchSize = new DataView(decompressed.buffer, pos).getUint32(0, false);
         pos = pos + 4;
         const patch = decompressed.slice(pos, pos + patchSize);
-        console.log(patch);
         const current = this.getPage(pageNumber);
         const patched = SuiSqlBinaryPatch.applyPatch(current, patch);
         pos = pos + patchSize;
@@ -78,7 +77,6 @@ class SuiSqliteBinaryView {
           const page1 = comparedTo.getPage(i);
           const page2 = this.getPage(i);
           const diff = SuiSqlBinaryPatch.binaryDiff(page1, page2);
-          console.log("patch", diff);
           patchParts.push(new Uint8Array([1]));
           patchParts.push(int32ToUint8ArrayBE(i));
           patchParts.push(int32ToUint8ArrayBE(diff.length));

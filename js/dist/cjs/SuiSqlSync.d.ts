@@ -48,6 +48,7 @@ export default class SuiSqlSync {
      */
     hasUnsavedChanges(): boolean;
     syncFromBlockchain(): Promise<boolean>;
+    getWalrusSystemObjectId(): Promise<any>;
     syncToBlockchain(params?: SuiSqlSyncToBlobckchainParams): Promise<boolean>;
     extendWalrus(extendedEpochs?: number): Promise<boolean | undefined>;
     fillExpectedWalrus(): Promise<boolean | undefined>;

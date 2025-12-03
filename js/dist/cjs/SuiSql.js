@@ -49,8 +49,8 @@ var State = /* @__PURE__ */ ((State2) => {
 ;
 class SuiSql {
   constructor(params) {
-    __publicField(this, "id");
-    __publicField(this, "name");
+    __publicField(this, "_id");
+    __publicField(this, "_name");
     __publicField(this, "suiClient");
     __publicField(this, "suiSqlSync");
     __publicField(this, "state", "INITIALIZING" /* INITIALIZING */);
@@ -72,18 +72,18 @@ class SuiSql {
       throw new Error("either id or name can be provided, not both");
     }
     if (params.id) {
-      this.id = params.id;
+      this._id = params.id;
     }
     if (params.name) {
-      this.name = params.name;
+      this._name = params.name;
     }
     if (params.suiClient) {
       this.suiClient = params.suiClient;
-      if (this.id || this.name) {
+      if (this._id || this.name) {
         this.suiSqlSync = new import_SuiSqlSync.default({
           suiSql: this,
-          id: this.id,
-          name: this.name,
+          id: this._id,
+          name: this._name,
           suiClient: this.suiClient,
           signer: params.signer,
           signAndExecuteTransaction: params.signAndExecuteTransaction,
@@ -97,6 +97,24 @@ class SuiSql {
     } else {
       throw new Error("SuiClient is required");
     }
+  }
+  get name() {
+    return this._name;
+  }
+  get id() {
+    return this._id;
+  }
+  get packageId() {
+    if (this.suiSqlSync && this.suiSqlSync.chain) {
+      return this.suiSqlSync.chain.getPackageId();
+    }
+    return null;
+  }
+  get originalPackageId() {
+    if (this.suiSqlSync && this.suiSqlSync.chain) {
+      return this.suiSqlSync.chain.getOriginalPackageId();
+    }
+    return null;
   }
   get network() {
     if (this.suiSqlSync) {
@@ -218,6 +236,9 @@ class SuiSql {
         binary: data
       });
       ;
+      if (this._db) {
+        this._db.close();
+      }
       this._db = this.librarian.fromBinarySync(data);
       this.mostRecentWriteChangeTime = Date.now();
       return true;
@@ -240,12 +261,13 @@ class SuiSql {
       try {
         if (this.suiSqlSync) {
           await this.suiSqlSync.syncFromBlockchain();
-          this.id = this.suiSqlSync.id;
-          if (!this.id) {
+          this._id = this.suiSqlSync.id;
+          this._name = this.suiSqlSync.name;
+          if (!this._id) {
             import_SuiSqlLog.default.log("error initilizing");
             this.state = "ERROR" /* ERROR */;
           } else {
-            import_SuiSqlLog.default.log("db id", this.id);
+            import_SuiSqlLog.default.log("db id", this._id);
             this.mostRecentWriteChangeTime = Date.now();
             if (this.suiSqlSync.hasBeenCreated) {
               import_SuiSqlLog.default.log("database is freshly created");

@@ -40,6 +40,7 @@ export default class SuiSqlBlockchain {
         walrusStorageSize: number | null;
         expectedWalrusBlobId: any;
         owner: SuiSqlOwnerType | null;
+        name: any;
     }>;
     getWalCoinType(): Promise<string>;
     getWalCoinForTx(tx: Transaction, amount: bigint): Promise<import("@mysten/sui/dist/cjs/transactions/Transaction.js").TransactionResult>;

@@ -172,6 +172,9 @@ class SuiSqlSync {
     }
     const id = this.id;
     const fields = await this.chain.getFields(id);
+    if (!this.name && fields.name) {
+      this.name = fields.name;
+    }
     if (fields.walrusBlobId) {
       this.walrusBlobId = (0, import_SuiSqlUtils2.blobIdFromInt)(fields.walrusBlobId);
       await this.loadFromWalrus(fields.walrusBlobId);
@@ -194,6 +197,15 @@ class SuiSqlSync {
     this.syncedAt = Date.now();
     await new Promise((res) => setTimeout(res, 5));
     return true;
+  }
+  async getWalrusSystemObjectId() {
+    if (import_SuiSqlConsts.walrusSystemObjectIds[this.network]) {
+      return import_SuiSqlConsts.walrusSystemObjectIds[this.network];
+    }
+    if (this.walrus) {
+      return await this.walrus.getSystemObjectId();
+    }
+    throw new Error("no walrus client provided to get walrus system object id");
   }
   async syncToBlockchain(params) {
     if (!this.id || !this.chain) {
@@ -228,7 +240,7 @@ class SuiSqlSync {
         if (!this.walrus) {
           throw new Error("not enough params to save walrus blob");
         }
-        const systemObjectId = await this.walrus.getSystemObjectId();
+        const systemObjectId = await this.getWalrusSystemObjectId();
         if (!systemObjectId) {
           throw new Error("can not get walrus system object id from walrusClient");
         }
@@ -243,6 +255,7 @@ class SuiSqlSync {
         }
         success = await this.chain.clampWithWalrus(this.id, wrote.blobObjectId, systemObjectId);
         if (success) {
+          this.patchesTotalSize = 0;
           this.walrusBlobId = (0, import_SuiSqlUtils2.blobIdFromInt)(wrote.blobId);
         }
       } else {
@@ -254,6 +267,9 @@ class SuiSqlSync {
         import_SuiSqlLog.default.log("saving patch", patchTypeByte == 1 ? "sql" : "binary", "bytes:", selectedPatch.length);
         this.syncedAt = Date.now();
         success = await this.chain.savePatch(this.id, (0, import_SuiSqlUtils.concatUint8Arrays)([new Uint8Array([patchTypeByte]), selectedPatch]), expectedBlobId ? expectedBlobId : void 0);
+        if (success) {
+          this.patchesTotalSize = this.patchesTotalSize + selectedPatch.length;
+        }
       }
     } catch (e) {
       gotError = e;
@@ -320,6 +336,7 @@ class SuiSqlSync {
         const success = await this.chain.fillExpectedWalrus(id, blobObjectId, systemObjectId);
         if (success) {
           this.walrusBlobId = (0, import_SuiSqlUtils2.blobIdFromInt)(status.blobId);
+          this.patchesTotalSize = 0;
         }
         return success;
       } else {

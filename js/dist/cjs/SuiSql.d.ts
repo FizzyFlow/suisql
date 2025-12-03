@@ -28,8 +28,8 @@ declare enum State {
     OK = "OK"
 }
 export default class SuiSql {
-    id?: string;
-    name?: string;
+    _id?: string;
+    _name?: string;
     private suiClient?;
     suiSqlSync?: SuiSqlSync;
     state: State;
@@ -42,6 +42,10 @@ export default class SuiSql {
     binaryView?: SuiSqliteBinaryView;
     initialBinaryView?: SuiSqliteBinaryView;
     constructor(params: SuiSqlParams);
+    get name(): string | undefined;
+    get id(): string | undefined;
+    get packageId(): string | null;
+    get originalPackageId(): string | null;
     get network(): string | null;
     /**
      * DB Base Walrus Blob ID ( in base64 format, the one for urls )

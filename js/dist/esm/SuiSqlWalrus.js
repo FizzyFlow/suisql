@@ -159,6 +159,9 @@ class SuiSqlWalrus {
     return { blobId: blobIdAsInt, blobObjectId };
   }
   async write2(data) {
+    if (this.publisherUrl && this.currentWalletAddress) {
+      return await this.writeToPublisher(data);
+    }
     if (!this.walrusClient || !this.chain) {
       return null;
     }
