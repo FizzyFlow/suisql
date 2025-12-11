@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { compress, decompress, concatUint8Arrays } from "./SuiSqlUtils.js";
+import { compress, decompress, concatUint8Arrays, jsonSafeStringify, jsonSafeParse } from "./SuiSqlUtils.js";
 import { maxBinaryArgumentSize, maxMoveObjectSize, walrusSystemObjectIds } from "./SuiSqlConsts.js";
 import { blobIdFromInt } from "./SuiSqlUtils.js";
 import SuiSqlBlockchain from "./SuiSqlBlockchain.js";
@@ -359,7 +359,7 @@ class SuiSqlSync {
       return false;
     }
     const decompressed = await decompress(patch);
-    const list = JSON.parse(new TextDecoder().decode(decompressed));
+    const list = jsonSafeParse(new TextDecoder().decode(decompressed));
     SuiSqlLog.log("applying SQL patch", list);
     for (const item of list) {
       try {
@@ -396,7 +396,7 @@ class SuiSqlSync {
       }
       return false;
     });
-    const input = new TextEncoder().encode(JSON.stringify(executions));
+    const input = new TextEncoder().encode(jsonSafeStringify(executions));
     const ziped = await compress(input);
     return ziped;
   }

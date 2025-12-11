@@ -26,4 +26,6 @@ declare function blobIdIntFromBytes(blobId: Uint8Array): bigint;
 declare function blobIdToInt(blobId: string): bigint;
 declare function uint8ArrayToBase64(input: Uint8Array): string;
 declare function base64ToUint8Array(base64: string): Uint8Array;
-export { anyShallowCopy, isSureWriteSql, compress, decompress, getFieldsFromCreateTableSql, int32ToUint8ArrayBE, bigintToUint8Array, idTo64, walrus64ToBigInt, concatUint8Arrays, blobIdFromInt, blobIdFromBytes, blobIdToInt, blobIdIntFromBytes, uint8ArrayToBase64, base64ToUint8Array, };
+declare function jsonSafeStringify(obj: any): string;
+declare function jsonSafeParse(jsonString: string): any;
+export { anyShallowCopy, isSureWriteSql, compress, decompress, getFieldsFromCreateTableSql, int32ToUint8ArrayBE, bigintToUint8Array, idTo64, walrus64ToBigInt, concatUint8Arrays, blobIdFromInt, blobIdFromBytes, blobIdToInt, blobIdIntFromBytes, uint8ArrayToBase64, base64ToUint8Array, jsonSafeStringify, jsonSafeParse, };

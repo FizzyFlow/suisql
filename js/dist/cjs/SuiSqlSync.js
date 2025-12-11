@@ -391,7 +391,7 @@ class SuiSqlSync {
       return false;
     }
     const decompressed = await (0, import_SuiSqlUtils.decompress)(patch);
-    const list = JSON.parse(new TextDecoder().decode(decompressed));
+    const list = (0, import_SuiSqlUtils.jsonSafeParse)(new TextDecoder().decode(decompressed));
     import_SuiSqlLog.default.log("applying SQL patch", list);
     for (const item of list) {
       try {
@@ -428,7 +428,7 @@ class SuiSqlSync {
       }
       return false;
     });
-    const input = new TextEncoder().encode(JSON.stringify(executions));
+    const input = new TextEncoder().encode((0, import_SuiSqlUtils.jsonSafeStringify)(executions));
     const ziped = await (0, import_SuiSqlUtils.compress)(input);
     return ziped;
   }

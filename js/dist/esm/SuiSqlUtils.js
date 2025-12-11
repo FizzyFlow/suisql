@@ -119,6 +119,34 @@ function base64ToUint8Array(base64) {
   }
   return bytes;
 }
+function jsonSafeStringify(obj) {
+  return JSON.stringify(
+    obj,
+    (_key, value) => {
+      if (value instanceof Uint8Array) {
+        return {
+          __type: "Uint8Array",
+          data: uint8ArrayToBase64(value)
+        };
+      }
+      if (typeof value === "bigint") {
+        return { __type: "BigInt", data: value.toString() };
+      }
+      return value;
+    }
+  );
+}
+function jsonSafeParse(jsonString) {
+  return JSON.parse(jsonString, (_key, value) => {
+    if (value && value.__type === "Uint8Array") {
+      return base64ToUint8Array(value.data);
+    }
+    if (value && value.__type === "BigInt") {
+      return BigInt(value.data);
+    }
+    return value;
+  });
+}
 export {
   anyShallowCopy,
   base64ToUint8Array,
@@ -134,6 +162,8 @@ export {
   idTo64,
   int32ToUint8ArrayBE,
   isSureWriteSql,
+  jsonSafeParse,
+  jsonSafeStringify,
   uint8ArrayToBase64,
   walrus64ToBigInt
 };

@@ -42,6 +42,8 @@ __export(SuiSqlUtils_exports, {
   idTo64: () => idTo64,
   int32ToUint8ArrayBE: () => int32ToUint8ArrayBE,
   isSureWriteSql: () => isSureWriteSql,
+  jsonSafeParse: () => jsonSafeParse,
+  jsonSafeStringify: () => jsonSafeStringify,
   uint8ArrayToBase64: () => uint8ArrayToBase64,
   walrus64ToBigInt: () => walrus64ToBigInt
 });
@@ -166,5 +168,33 @@ function base64ToUint8Array(base64) {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
+}
+function jsonSafeStringify(obj) {
+  return JSON.stringify(
+    obj,
+    (_key, value) => {
+      if (value instanceof Uint8Array) {
+        return {
+          __type: "Uint8Array",
+          data: uint8ArrayToBase64(value)
+        };
+      }
+      if (typeof value === "bigint") {
+        return { __type: "BigInt", data: value.toString() };
+      }
+      return value;
+    }
+  );
+}
+function jsonSafeParse(jsonString) {
+  return JSON.parse(jsonString, (_key, value) => {
+    if (value && value.__type === "Uint8Array") {
+      return base64ToUint8Array(value.data);
+    }
+    if (value && value.__type === "BigInt") {
+      return BigInt(value.data);
+    }
+    return value;
+  });
 }
 //# sourceMappingURL=SuiSqlUtils.js.map
