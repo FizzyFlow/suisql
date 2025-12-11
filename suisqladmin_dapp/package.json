@@ -21,7 +21,7 @@
     "fastify": "^4.27.0"
   },
   "devDependencies": {
-    "@fizzyflow/suisql": "^0.0.26",
+    "@fizzyflow/suisql": "^0.0.27",
     "vue-sui": "1.45.2",
     "suidouble": "1.45.2",
     "@mysten/sui": "^1.45.2",
