@@ -6,7 +6,7 @@ import type { SuiSqlOwnerType } from "./SuiSqlBlockchain.js";
 // import { Transaction } from "@mysten/sui/transactions";
 // import { bcs } from '@mysten/sui/bcs';
 
-import { compress, decompress, concatUint8Arrays, uint8ArrayToBase64 } from "./SuiSqlUtils.js";
+import { compress, decompress, concatUint8Arrays, uint8ArrayToBase64, jsonSafeStringify, jsonSafeParse } from "./SuiSqlUtils.js";
 import { maxBinaryArgumentSize, maxMoveObjectSize, walrusSystemObjectIds } from "./SuiSqlConsts.js";
 // import { packages } from "./SuiSqlConsts";
 
@@ -500,7 +500,7 @@ export default class SuiSqlSync {
         }
 
         const decompressed = await decompress(patch);
-        const list = JSON.parse( (new TextDecoder()).decode(decompressed) );
+        const list = jsonSafeParse( (new TextDecoder()).decode(decompressed) );
 
         SuiSqlLog.log('applying SQL patch', list);
 
@@ -546,7 +546,7 @@ export default class SuiSqlSync {
                 return false;
             });
 
-        const input = (new TextEncoder()).encode(JSON.stringify(executions));
+        const input = (new TextEncoder()).encode(jsonSafeStringify(executions));
         const ziped = await compress(input);
 
         return ziped;

@@ -161,6 +161,34 @@ function base64ToUint8Array(base64: string): Uint8Array {
     return bytes;
 }
 
+function jsonSafeStringify(obj: any): string {
+    return JSON.stringify(obj, (_key, value) => {
+            if (value instanceof Uint8Array) {
+                return {
+                    __type: "Uint8Array",
+                    data: uint8ArrayToBase64(value),
+                };
+            }
+            if (typeof value === "bigint") {
+                return { __type: "BigInt", data: value.toString() };
+            }
+            return value;
+        }
+    );
+}
+
+function jsonSafeParse(jsonString: string): any {
+    return JSON.parse(jsonString, (_key, value) => {
+        if (value && value.__type === "Uint8Array") {
+            return base64ToUint8Array(value.data);
+        }
+        if (value && value.__type === "BigInt") {
+            return BigInt(value.data);
+        }
+        return value;
+    });
+}
+
 export { 
     anyShallowCopy, 
     isSureWriteSql, 
@@ -180,4 +208,7 @@ export {
 
     uint8ArrayToBase64,
     base64ToUint8Array,
+
+    jsonSafeStringify,
+    jsonSafeParse,
 };
