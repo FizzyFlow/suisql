@@ -1,5 +1,5 @@
 import SuiSql from "./SuiSql.js";
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiGrpcClient } from '@mysten/sui/grpc';
 import type { Signer } from '@mysten/sui/cryptography';
 import SuiSqlBlockchain from "./SuiSqlBlockchain.js";
 import { CustomSignAndExecuteTransactionFunction } from "./SuiSqlBlockchain.js";
@@ -9,7 +9,7 @@ type SuiSqlSyncParams = {
     suiSql: SuiSql;
     id?: string;
     name?: string;
-    suiClient: SuiClient;
+    suiClient: SuiGrpcClient;
     walrusClient?: SuiSqlWalrusWalrusClient;
     publisherUrl?: string;
     aggregatorUrl?: string;

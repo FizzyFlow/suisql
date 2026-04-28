@@ -157,8 +157,10 @@ class SuiSqlSync {
       this.owner = fields.owner;
     }
     this.patchesTotalSize = 0;
+    console.log("[syncFromBlockchain] id:", id, "patches count:", fields?.patches?.length, "walrusBlobId:", fields?.walrusBlobId);
     SuiSqlLog.log("need to apply patches", fields?.patches?.length);
     for (const patch of fields.patches) {
+      console.log("[syncFromBlockchain] applying patch, length:", patch.length, "type byte:", patch[0]);
       this.patchesTotalSize = this.patchesTotalSize + patch.length;
       await this.applyPatch(patch);
     }

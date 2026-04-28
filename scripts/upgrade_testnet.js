@@ -28,8 +28,12 @@ export const getPublishedAt = (pathToMoveTOML) => {
 
 const run = async()=>{
     // RUST_LOG="off,sui_node=info" sui start --with-faucet --force-regenesis
-   
-    if (!argv.phrase) {
+    let phrase = await fs.promises.readFile(path.join(__dirname, './.privatekey'), 'utf-8');
+    if (!phrase && argv.phrase) {
+        phrase = argv.phrase;
+    }
+
+    if (!phrase) {
         throw new Error('wrong phrase');
     }
 
@@ -37,7 +41,7 @@ const run = async()=>{
     console.error(id);
     console.log(path.join(__dirname, '../move'));
 
-    const suiMaster = new SuiMaster({client: 'testnet', privateKey: argv.phrase, debug: true});
+    const suiMaster = new SuiMaster({client: 'testnet', privateKey: phrase, debug: true});
 
 
     const pk = suiMaster.addPackage({

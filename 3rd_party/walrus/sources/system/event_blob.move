@@ -85,7 +85,7 @@ public(package) fun create_with_empty_state(): EventBlobCertificationState {
     }
 }
 
-/// Returns the blob id of the latest certified event blob
+/// Returns the blob id of the latest certified event blob.
 public(package) fun get_latest_certified_blob_id(self: &EventBlobCertificationState): Option<u256> {
     self.latest_certified_blob.map!(|state| state.blob_id())
 }
@@ -100,7 +100,7 @@ public(package) fun get_latest_certified_checkpoint_sequence_number(
 
 /// Returns the number of blobs being tracked
 public(package) fun get_num_tracked_blobs(self: &EventBlobCertificationState): u64 {
-    self.aggregate_weight_per_blob.size()
+    self.aggregate_weight_per_blob.length()
 }
 
 /// Returns true if a blob is already certified or false otherwise

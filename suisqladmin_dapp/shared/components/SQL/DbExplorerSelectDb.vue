@@ -96,7 +96,7 @@
                         <div class="text-center q-mt-md">
 
     <q-card class="projects" flat style="display: inline-block; ">
-    <router-link href="https://moome.pro" target="_blank"  style="text-decoration: none;">
+    <a href="https://moome.pro" target="_blank"  style="text-decoration: none;">
       <q-item>
         <q-item-section avatar>
           <q-avatar size="56px">
@@ -109,12 +109,12 @@
           <q-item-label caption  class="text-left" style="text-decoration: none;">Liquid staking memes</q-item-label>
         </q-item-section>
       </q-item>
-    </router-link>
+    </a>
     </q-card>
 
 
     <q-card class="projects" flat style="display: inline-block; ">
-    <router-link href="https://github.com/FizzyFlow" target="_blank"  style="text-decoration: none;">
+    <a href="https://github.com/FizzyFlow" target="_blank"  style="text-decoration: none;">
       <q-item>
         <q-item-section avatar>
           <q-avatar size="56px">
@@ -127,13 +127,13 @@
           <q-item-label caption  class="text-left" style="text-decoration: none;">Build. Build. Build</q-item-label>
         </q-item-section>
       </q-item>
-    </router-link>
+    </a>
     </q-card>
 
 
 
     <q-card class="projects" flat style="display: inline-block; ">
-    <router-link href="https://x.com/suidouble" target="_blank"  style="text-decoration: none;">
+    <a href="https://x.com/suidouble" target="_blank"  style="text-decoration: none;">
       <q-item>
         <q-item-section avatar>
           <q-avatar size="56px">
@@ -146,7 +146,7 @@
           <q-item-label caption  class="text-left" style="text-decoration: none;">Follow me on X</q-item-label>
         </q-item-section>
       </q-item>
-    </router-link>
+    </a>
     </q-card>
 
                         </div>
@@ -256,6 +256,8 @@ export default {
             this.names = [];
             this.options = [];
 
+            console.log(db);
+
             await db.listDatabases((databaseNames) => {
                 for (const name of databaseNames) {
                     if (!this.names.includes(name)) {
@@ -265,6 +267,9 @@ export default {
                 }
                 this.isLoadingDatabases = false;
             });
+
+
+            console.log(db);
         },
 	},
 	unmounted: function() {

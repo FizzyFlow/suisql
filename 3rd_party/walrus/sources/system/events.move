@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Module to emit events. Used to allow filtering all events in the
-/// rust client (as work-around for the lack of composable event filters).
+/// Rust client (as work-around for the lack of composable event filters).
 module walrus::events;
 
 use sui::event;
@@ -120,6 +120,65 @@ public struct ContractUpgradeQuorumReached has copy, drop {
     package_digest: vector<u8>,
 }
 
+/// Signals that the protocol version has been updated.
+public struct ProtocolVersionUpdated has copy, drop {
+    epoch: u32,
+    start_epoch: u32,
+    protocol_version: u64,
+}
+
+/// Signals that storage and write prices have been updated.
+public struct PricesUpdated has copy, drop {
+    epoch: u32,
+    storage_price: u64,
+    write_price: u64,
+}
+
+/// Signals that a StoragePool pool has been created.
+public struct StoragePoolCreated has copy, drop {
+    epoch: u32,
+    storage_pool_id: ID,
+    reserved_encoded_capacity_bytes: u64,
+    start_epoch: u32,
+    end_epoch: u32,
+}
+
+/// Signals that a blob has been registered against a StoragePool pool.
+public struct PooledBlobRegistered has copy, drop {
+    epoch: u32,
+    blob_id: u256,
+    unencoded_size: u64,
+    encoding_type: u8,
+    deletable: bool,
+    object_id: ID,
+    storage_pool_id: ID,
+}
+
+/// Signals that a blob in a StoragePool pool has been certified.
+public struct PooledBlobCertified has copy, drop {
+    epoch: u32,
+    blob_id: u256,
+    deletable: bool,
+    object_id: ID,
+    storage_pool_id: ID,
+}
+
+/// Signals that a blob has been deleted from a StoragePool pool.
+public struct PooledBlobDeleted has copy, drop {
+    epoch: u32,
+    blob_id: u256,
+    object_id: ID,
+    was_certified: bool,
+    storage_pool_id: ID,
+}
+
+/// Signals that a StoragePool pool's lifetime has been extended.
+public struct StoragePoolExtended has copy, drop {
+    epoch: u32,
+    storage_pool_id: ID,
+    new_end_epoch: u32,
+}
+
 // === Functions to emit the events from other modules ===
 
 public(package) fun emit_blob_registered(
@@ -191,6 +250,10 @@ public(package) fun emit_contract_upgraded(epoch: u32, package_id: ID, version: 
     event::emit(ContractUpgraded { epoch, package_id, version })
 }
 
+public(package) fun emit_protocol_version(epoch: u32, start_epoch: u32, protocol_version: u64) {
+    event::emit(ProtocolVersionUpdated { epoch, start_epoch, protocol_version })
+}
+
 public(package) fun emit_register_deny_list_update(
     epoch: u32,
     root: u256,
@@ -219,4 +282,84 @@ public(package) fun emit_contract_upgrade_proposed(epoch: u32, package_digest: v
 
 public(package) fun emit_contract_upgrade_quorum_reached(epoch: u32, package_digest: vector<u8>) {
     event::emit(ContractUpgradeQuorumReached { epoch, package_digest })
+}
+
+public(package) fun emit_prices_updated(epoch: u32, storage_price: u64, write_price: u64) {
+    event::emit(PricesUpdated { epoch, storage_price, write_price })
+}
+
+public(package) fun emit_storage_pool_created(
+    epoch: u32,
+    storage_pool_id: ID,
+    reserved_encoded_capacity_bytes: u64,
+    start_epoch: u32,
+    end_epoch: u32,
+) {
+    event::emit(StoragePoolCreated {
+        epoch,
+        storage_pool_id,
+        reserved_encoded_capacity_bytes,
+        start_epoch,
+        end_epoch,
+    })
+}
+
+public(package) fun emit_pooled_blob_registered(
+    epoch: u32,
+    blob_id: u256,
+    unencoded_size: u64,
+    encoding_type: u8,
+    deletable: bool,
+    object_id: ID,
+    storage_pool_id: ID,
+) {
+    event::emit(PooledBlobRegistered {
+        epoch,
+        blob_id,
+        unencoded_size,
+        encoding_type,
+        deletable,
+        object_id,
+        storage_pool_id,
+    })
+}
+
+public(package) fun emit_pooled_blob_certified(
+    epoch: u32,
+    blob_id: u256,
+    deletable: bool,
+    object_id: ID,
+    storage_pool_id: ID,
+) {
+    event::emit(PooledBlobCertified {
+        epoch,
+        blob_id,
+        deletable,
+        object_id,
+        storage_pool_id,
+    })
+}
+
+public(package) fun emit_pooled_blob_deleted(
+    epoch: u32,
+    blob_id: u256,
+    object_id: ID,
+    was_certified: bool,
+    storage_pool_id: ID,
+) {
+    event::emit(PooledBlobDeleted {
+        epoch,
+        blob_id,
+        object_id,
+        was_certified,
+        storage_pool_id,
+    })
+}
+
+public(package) fun emit_storage_pool_extended(
+    epoch: u32,
+    storage_pool_id: ID,
+    new_end_epoch: u32,
+) {
+    event::emit(StoragePoolExtended { epoch, storage_pool_id, new_end_epoch })
 }

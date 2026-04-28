@@ -2,7 +2,8 @@
 	"extends": "./tsconfig.shared.json",
 	"include": ["src"],
 	"compilerOptions": {
-		"module": "CommonJS",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
 		"outDir": "dist/cjs",
 		"isolatedModules": true,
 		"rootDir": "src"

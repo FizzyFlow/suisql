@@ -1,7 +1,17 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // ifnore certs of walrus nodes
 
 import { WalrusClient } from '@mysten/walrus';
+import { SuiGrpcClient, GrpcWebFetchTransport } from '@mysten/sui/grpc';
 import { Agent } from "undici";
+
+const suiMainnetClient = new SuiGrpcClient({
+    network: 'mainnet',
+    transport: new GrpcWebFetchTransport({ baseUrl: 'https://fullnode.mainnet.sui.io:443' }),
+});
+const suiTestnetClient = new SuiGrpcClient({
+    network: 'testnet',
+    transport: new GrpcWebFetchTransport({ baseUrl: 'https://fullnode.testnet.sui.io:443' }),
+});
 
 const path = require('path').join(__dirname, 'walrus_wasm_bg.wasm');
 const bytes = require('fs').readFileSync(path);
@@ -38,7 +48,7 @@ const limitedFetch = async (url, options) => {
 const walrusMainnetClient = new WalrusClient({
     network: 'mainnet',
     wasmUrl: bytes,
-    suiRpcUrl: 'https://fullnode.mainnet.sui.io:443',
+    suiClient: suiMainnetClient,
     storageNodeClientOptions: {
         fetch: limitedFetch,
         timeout: 170000,
@@ -60,7 +70,7 @@ const walrusMainnetClient = new WalrusClient({
 const walrusTestnetClient = new WalrusClient({
     network: 'testnet',
     wasmUrl: bytes,
-    suiRpcUrl: 'https://fullnode.testnet.sui.io:443',
+    suiClient: suiTestnetClient,
     storageNodeClientOptions: {
         fetch: limitedFetch,
         timeout: 170000,
@@ -80,7 +90,7 @@ const walrusTestnetClient = new WalrusClient({
 const walrusTestnetClientNoRelay = new WalrusClient({
     network: 'testnet',
     wasmUrl: bytes,
-    suiRpcUrl: 'https://fullnode.testnet.sui.io:443',
+    suiClient: suiTestnetClient,
     storageNodeClientOptions: {
         fetch: limitedFetch,
         timeout: 170000,
@@ -90,7 +100,7 @@ const walrusTestnetClientNoRelay = new WalrusClient({
 const walrusMainnetClientNoRelay = new WalrusClient({
     network: 'mainnet',
     wasmUrl: bytes,
-    suiRpcUrl: 'https://fullnode.mainnet.sui.io:443',
+    suiClient: suiMainnetClient,
     storageNodeClientOptions: {
         fetch: limitedFetch,
         timeout: 170000,

@@ -17,6 +17,7 @@ use walrus::{
     messages,
     storage_accounting::{Self, FutureAccountingRingBuffer},
     storage_node::StorageNodeCap,
+    storage_pool::{Self, StoragePool},
     storage_resource::{Self, Storage}
 };
 
@@ -53,6 +54,8 @@ const EIncorrectDenyListSequence: u64 = 9;
 const EIncorrectDenyListNode: u64 = 10;
 /// Trying to obtain a resource with an invalid size.
 const EInvalidResourceSize: u64 = 11;
+/// Trying to update the protocol version for an invalid start epoch.
+const EInvalidStartEpoch: u64 = 12;
 
 /// The inner object that is not present in signatures and can be versioned.
 #[allow(unused_field)]
@@ -138,10 +141,9 @@ public(package) fun advance_epoch(
     // Update used capacity size to the new epoch without popping the ring buffer.
     self.used_capacity_size = self.future_accounting.ring_lookup_mut(0).used_capacity();
 
-    // Update capacity and prices.
+    // Update capacity. Prices are no longer updated here; they are applied immediately
+    // when price votes are cast via set_storage_price_vote / set_write_price_vote.
     self.total_capacity_size = new_epoch_params.capacity().max(self.used_capacity_size);
-    self.storage_price_per_unit_size = new_epoch_params.storage_price();
-    self.write_price_per_unit_size = new_epoch_params.write_price();
 
     // === Rewards distribution ===
 
@@ -185,6 +187,12 @@ public(package) fun advance_epoch(
     vec_map::from_keys_values(node_ids, reward_values)
 }
 
+/// Extracts the balance that will be burned for the current epoch. This function is used when
+/// executing the epoch change.
+public(package) fun extract_burn_balance(self: &mut SystemStateInnerV1): Balance<WAL> {
+    self.future_accounting.extract_burn_balance()
+}
+
 /// Allow buying a storage reservation for a given period of epochs.
 public(package) fun reserve_space(
     self: &mut SystemStateInnerV1,
@@ -197,30 +205,63 @@ public(package) fun reserve_space(
     assert!(epochs_ahead > 0, EInvalidEpochsAhead);
     assert!(epochs_ahead <= self.future_accounting.max_epochs_ahead(), EInvalidEpochsAhead);
 
-    // Pay rewards for each future epoch into the future accounting.
-    self.process_storage_payments(storage_amount, 0, epochs_ahead, payment);
-
-    self.reserve_space_without_payment(storage_amount, epochs_ahead, true, ctx)
+    let start_epoch = self.epoch();
+    let end_epoch = start_epoch + epochs_ahead;
+    self.reserve_space_for_epochs(storage_amount, start_epoch, end_epoch, payment, ctx)
 }
 
-/// Allow buying a storage reservation for a given period of epochs without
-/// payment.
+/// Allows buying a storage reservation for a given period of epochs.
+///
+/// Returns a storage resource for the period between `start_epoch` (inclusive) and
+/// `end_epoch` (exclusive). If `start_epoch` has already passed, reserves space starting
+/// from the current epoch.
+public(package) fun reserve_space_for_epochs(
+    self: &mut SystemStateInnerV1,
+    storage_amount: u64,
+    start_epoch: u32,
+    end_epoch: u32,
+    payment: &mut Coin<WAL>,
+    ctx: &mut TxContext,
+): Storage {
+    let current_epoch = self.epoch();
+    // If the start epoch has already passed, reserve space starting at the current epoch.
+    let start_epoch = start_epoch.max(current_epoch);
+    let start_offset = start_epoch - current_epoch;
+
+    // Check that the interval is non-empty.
+    assert!(end_epoch > start_epoch, EInvalidEpochsAhead);
+
+    let end_offset = end_epoch - current_epoch;
+
+    // Check the period is within the allowed range.
+    assert!(end_offset <= self.future_accounting.max_epochs_ahead(), EInvalidEpochsAhead);
+
+    // Pay rewards for each future epoch into the future accounting.
+    self.process_storage_payments(storage_amount, start_offset, end_offset, payment);
+
+    // Reserve the space
+    self.reserve_space_without_payment(storage_amount, start_offset, end_offset, true, ctx)
+}
+
+/// Allow obtaining a storage reservation for a given period of epochs without
+/// payment. The epochs are provided as offsets from the current epoch.
 fun reserve_space_without_payment(
     self: &mut SystemStateInnerV1,
     storage_amount: u64,
-    epochs_ahead: u32,
+    start_epoch_offset: u32,
+    end_epoch_offset: u32,
     check_capacity: bool,
     ctx: &mut TxContext,
 ): Storage {
     // Check the period is within the allowed range.
-    assert!(epochs_ahead > 0, EInvalidEpochsAhead);
-    assert!(epochs_ahead <= self.future_accounting.max_epochs_ahead(), EInvalidEpochsAhead);
+    assert!(end_epoch_offset - start_epoch_offset > 0, EInvalidEpochsAhead);
+    assert!(end_epoch_offset <= self.future_accounting.max_epochs_ahead(), EInvalidEpochsAhead);
 
     // Check that the storage has a non-zero size.
     assert!(storage_amount > 0, EInvalidResourceSize);
 
-    // Account the space to reclaim in the future.
-    epochs_ahead.do!(|i| {
+    // Account for the used capacity for all epochs.
+    start_epoch_offset.range_do!(end_epoch_offset, |i| {
         let used_capacity = self
             .future_accounting
             .ring_lookup_mut(i)
@@ -234,11 +275,13 @@ fun reserve_space_without_payment(
         assert!(!check_capacity || used_capacity <= self.total_capacity_size, EStorageExceeded);
     });
 
-    let self_epoch = self.epoch();
+    let current_epoch = self.epoch();
+    let start_epoch = current_epoch + start_epoch_offset;
+    let end_epoch = current_epoch + end_epoch_offset;
 
     storage_resource::create_storage(
-        self_epoch,
-        self_epoch + epochs_ahead,
+        start_epoch,
+        end_epoch,
         storage_amount,
         ctx,
     )
@@ -478,6 +521,7 @@ public(package) fun certify_event_blob(
     let epochs_ahead = self.future_accounting.max_epochs_ahead();
     let storage = self.reserve_space_without_payment(
         encoded_blob_length(size, encoding_type, num_shards),
+        0,
         epochs_ahead,
         false, // Do not check total capacity, event blobs are certified already at this point.
         ctx,
@@ -546,6 +590,27 @@ public(package) fun add_subsidy(
     self.future_accounting.ring_lookup_mut(0).rewards_balance().join(subsidy_balance);
 }
 
+/// Adds rewards to the system for future epochs, where `subsidies[i]` is added to the rewards
+/// of epoch `system.epoch() + i`.
+public(package) fun add_per_epoch_subsidies(
+    self: &mut SystemStateInnerV1,
+    subsidies: vector<Balance<WAL>>,
+) {
+    assert!(
+        subsidies.length() <= self.future_accounting.max_epochs_ahead() as u64,
+        EInvalidEpochsAhead,
+    );
+    let mut epochs_in_future = 0;
+    subsidies.do!(|per_epoch_subsidy| {
+        self
+            .future_accounting
+            .ring_lookup_mut(epochs_in_future)
+            .rewards_balance()
+            .join(per_epoch_subsidy);
+        epochs_in_future = epochs_in_future + 1;
+    })
+}
+
 // === Accessors ===
 
 /// Get epoch. Uses the committee to get the epoch.
@@ -568,6 +633,11 @@ public(package) fun committee(self: &SystemStateInnerV1): &BlsCommittee {
     &self.committee
 }
 
+/// Read-only access to the accounting ring buffer.
+public(package) fun future_accounting(self: &SystemStateInnerV1): &FutureAccountingRingBuffer {
+    &self.future_accounting
+}
+
 #[test_only]
 public(package) fun committee_mut(self: &mut SystemStateInnerV1): &mut BlsCommittee {
     &mut self.committee
@@ -580,6 +650,30 @@ public(package) fun n_shards(self: &SystemStateInnerV1): u16 {
 public(package) fun write_price(self: &SystemStateInnerV1, write_size: u64): u64 {
     let storage_units = storage_units_from_size!(write_size);
     self.write_price_per_unit_size * storage_units
+}
+
+/// Sets the storage price per unit size. Called when a price vote is cast and the quorum
+/// price is recalculated.
+public(package) fun set_storage_price(self: &mut SystemStateInnerV1, price: u64) {
+    self.storage_price_per_unit_size = price;
+}
+
+/// Sets the write price per unit size. Called when a price vote is cast and the quorum
+/// price is recalculated.
+public(package) fun set_write_price(self: &mut SystemStateInnerV1, price: u64) {
+    self.write_price_per_unit_size = price;
+}
+
+#[test_only]
+/// Returns the raw storage price per unit size.
+public(package) fun storage_price_per_unit_size(self: &SystemStateInnerV1): u64 {
+    self.storage_price_per_unit_size
+}
+
+#[test_only]
+/// Returns the raw write price per unit size.
+public(package) fun write_price_per_unit_size(self: &SystemStateInnerV1): u64 {
+    self.write_price_per_unit_size
 }
 
 #[test_only]
@@ -603,6 +697,35 @@ public(package) fun used_capacity_size_at_future_epoch(
 macro fun storage_units_from_size($size: u64): u64 {
     let size = $size;
     size.divide_and_round_up(BYTES_PER_UNIT_SIZE)
+}
+
+// === Protocol Version ===
+
+/// Check quorum of committee members and emit the protocol version event.
+public(package) fun update_protocol_version(
+    self: &SystemStateInnerV1,
+    cap: &StorageNodeCap,
+    signature: vector<u8>,
+    members_bitmap: vector<u8>,
+    message: vector<u8>,
+) {
+    assert!(self.committee().contains(&cap.node_id()), ENotCommitteeMember);
+
+    let certified_message = self
+        .committee
+        .verify_quorum_in_epoch(signature, members_bitmap, message);
+
+    let epoch = certified_message.cert_epoch();
+    let message = certified_message.protocol_version_message();
+    let start_epoch = message.start_epoch();
+    assert!(epoch == self.epoch(), EInvalidIdEpoch);
+    assert!(start_epoch >= self.epoch(), EInvalidStartEpoch);
+
+    events::emit_protocol_version(
+        epoch,
+        message.start_epoch(),
+        message.protocol_version(),
+    );
 }
 
 // === DenyList ===
@@ -691,6 +814,249 @@ public(package) fun delete_deny_listed_blob(
     events::emit_deny_listed_blob_deleted(epoch, message.blob_id());
 }
 
+// === Storage Pool ===
+
+/// Creates a new `StoragePool` pool, paying for the full capacity.
+public(package) fun create_storage_pool(
+    self: &mut SystemStateInnerV1,
+    reserved_encoded_capacity_bytes: u64,
+    epochs_ahead: u32,
+    payment: &mut Coin<WAL>,
+    ctx: &mut TxContext,
+): StoragePool {
+    // Reserve a Storage object (handles validation, payment, and capacity accounting).
+    let storage = self.reserve_space(reserved_encoded_capacity_bytes, epochs_ahead, payment, ctx);
+    self.create_storage_pool_with_storage(storage, ctx)
+}
+
+/// Creates a new `StoragePool` backed by an existing `Storage` reservation.
+/// The storage must have started (start_epoch <= current epoch) and not yet expired.
+public(package) fun create_storage_pool_with_storage(
+    self: &SystemStateInnerV1,
+    storage: Storage,
+    ctx: &mut TxContext,
+): StoragePool {
+    assert!(storage.size() > 0, EInvalidResourceSize);
+    assert!(storage.start_epoch() <= self.epoch(), EInvalidEpochsAhead);
+    assert!(storage.end_epoch() > self.epoch(), EInvalidEpochsAhead);
+    let pool = storage_pool::create(storage, ctx);
+
+    events::emit_storage_pool_created(
+        self.epoch(),
+        pool.object_id(),
+        pool.reserved_encoded_capacity_bytes(),
+        pool.start_epoch(),
+        pool.end_epoch(),
+    );
+
+    pool
+}
+
+/// Registers a blob against a `StoragePool` pool.
+public(package) fun register_pooled_blob(
+    self: &mut SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    blob_id: u256,
+    root_hash: u256,
+    unencoded_size: u64,
+    encoding_type: u8,
+    deletable: bool,
+    write_payment_coin: &mut Coin<WAL>,
+    ctx: &mut TxContext,
+) {
+    // Validate pool is active for the current epoch.
+    assert!(self.epoch() >= storage_pool.start_epoch(), EInvalidEpochsAhead);
+    assert!(self.epoch() < storage_pool.end_epoch(), EInvalidEpochsAhead);
+
+    // Create the blob (emits PooledBlobRegistered event).
+    let pooled_blob = storage_pool::new_pooled_blob(
+        storage_pool.object_id(),
+        blob_id,
+        root_hash,
+        unencoded_size,
+        encoding_type,
+        deletable,
+        self.epoch(),
+        ctx,
+    );
+
+    // Insert into the object table and increment used size.
+    let encoded_size = encoded_blob_length(unencoded_size, encoding_type, self.n_shards());
+    storage_pool.add_blob(pooled_blob, encoded_size);
+
+    // Charge write fee.
+    let write_price = self.write_price(encoded_size);
+    let payment = write_payment_coin.balance_mut().split(write_price);
+    self.future_accounting.ring_lookup_mut(0).rewards_balance().join(payment);
+}
+
+/// Deletes a blob from a `StoragePool` and frees its capacity.
+public(package) fun delete_pooled_blob(
+    self: &SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    blob_id: u256,
+) {
+    assert!(storage_pool.end_epoch() > self.epoch(), EInvalidEpochsAhead);
+
+    // Remove blob from the table and decrement used size.
+    let blob = storage_pool.remove_blob(blob_id, self.n_shards());
+
+    // Delete the blob (checks deletable, emits event, destroys).
+    storage_pool::delete_blob_object(blob, self.epoch());
+}
+
+/// Burns a blob from an expired `StoragePool`, regardless of the `deletable` flag.
+/// The pool must have expired (`end_epoch <= current_epoch`).
+public(package) fun burn_expired_pooled_blob(
+    self: &SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    blob_id: u256,
+) {
+    assert!(storage_pool.end_epoch() <= self.epoch(), EInvalidEpochsAhead);
+
+    // Remove blob from the table and decrement used size.
+    let blob = storage_pool.remove_blob(blob_id, self.n_shards());
+
+    // Burn the blob (no deletable check, no event, destroys).
+    storage_pool::burn_blob_object(blob);
+}
+
+/// Extends the lifetime of a `StoragePool` by `extended_epochs`.
+public(package) fun extend_storage_pool(
+    self: &mut SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    extended_epochs: u32,
+    payment: &mut Coin<WAL>,
+) {
+    assert!(extended_epochs > 0, EInvalidEpochsAhead);
+    assert!(storage_pool.end_epoch() > self.epoch(), EInvalidEpochsAhead);
+
+    let start_offset = storage_pool.end_epoch() - self.epoch();
+    let end_offset = start_offset + extended_epochs;
+    assert!(end_offset <= self.future_accounting.max_epochs_ahead(), EInvalidEpochsAhead);
+
+    // Pay rewards for each future epoch into the future accounting.
+    self.process_storage_payments(
+        storage_pool.reserved_encoded_capacity_bytes(),
+        start_offset,
+        end_offset,
+        payment,
+    );
+
+    // Account capacity in ring buffer for newly extended epochs.
+    self.account_capacity(start_offset, end_offset, storage_pool.reserved_encoded_capacity_bytes());
+
+    storage_pool.extend_end_epoch(extended_epochs);
+
+    events::emit_storage_pool_extended(
+        self.epoch(),
+        storage_pool.object_id(),
+        storage_pool.end_epoch(),
+    );
+}
+
+/// Increases the reserved capacity of a `StoragePool` for the remainder of its lifetime.
+public(package) fun increase_storage_pool_capacity(
+    self: &mut SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    additional_encoded_capacity_bytes: u64,
+    payment: &mut Coin<WAL>,
+) {
+    assert!(additional_encoded_capacity_bytes > 0, EInvalidResourceSize);
+    assert!(storage_pool.end_epoch() > self.epoch(), EInvalidEpochsAhead);
+
+    let remaining_epochs = storage_pool.end_epoch() - self.epoch();
+
+    self.process_storage_payments(
+        additional_encoded_capacity_bytes,
+        0,
+        remaining_epochs,
+        payment,
+    );
+
+    self.account_capacity(0, remaining_epochs, additional_encoded_capacity_bytes);
+    storage_pool.increase_reserved_encoded_capacity(additional_encoded_capacity_bytes);
+}
+
+/// Increases the pool's capacity by absorbing an existing `Storage` object.
+public(package) fun increase_storage_pool_capacity_with_storage(
+    self: &SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    storage: Storage,
+) {
+    assert!(storage_pool.end_epoch() > self.epoch(), EInvalidEpochsAhead);
+    storage_pool.increase_capacity_with_storage(storage, self.epoch());
+}
+
+/// Reduces the pool's capacity by extracting a `Storage` object of the given size.
+/// Returns `none` when `size` is zero.
+public(package) fun decrease_storage_pool_capacity_by_size(
+    self: &SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    size: u64,
+    ctx: &mut TxContext,
+): Option<Storage> {
+    assert!(storage_pool.end_epoch() > self.epoch(), EInvalidEpochsAhead);
+    storage_pool.decrease_capacity_by_size(size, ctx)
+}
+
+/// Reduces the pool's capacity by extracting `percent` of the unused capacity as a `Storage`
+/// object. Returns `none` when the computed extract size is zero.
+public(package) fun decrease_storage_pool_unused_capacity_by_percent(
+    self: &SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    percent: u8,
+    ctx: &mut TxContext,
+): Option<Storage> {
+    assert!(storage_pool.end_epoch() > self.epoch(), EInvalidEpochsAhead);
+    storage_pool.decrease_unused_capacity_by_percent(percent, ctx)
+}
+
+/// Certifies a blob within a `StoragePool`.
+public(package) fun certify_pooled_blob(
+    self: &SystemStateInnerV1,
+    storage_pool: &mut StoragePool,
+    blob_id: u256,
+    signature: vector<u8>,
+    signers_bitmap: vector<u8>,
+    message: vector<u8>,
+) {
+    let certified_msg = self
+        .committee()
+        .verify_quorum_in_epoch(
+            signature,
+            signers_bitmap,
+            message,
+        );
+    assert!(certified_msg.cert_epoch() == self.epoch(), EInvalidIdEpoch);
+
+    let certified_blob_msg = certified_msg.certify_blob_message();
+    let end_epoch = storage_pool.end_epoch();
+    let pooled_blob = storage_pool.borrow_blob_mut(blob_id);
+    storage_pool::certify(pooled_blob, self.epoch(), end_epoch, certified_blob_msg);
+}
+
+/// Helper to account for used capacity in each future epoch from the start epoch to the end epoch.
+fun account_capacity(
+    self: &mut SystemStateInnerV1,
+    start_epoch_offset: u32,
+    end_epoch_offset: u32,
+    encoded_capacity_bytes: u64,
+) {
+    start_epoch_offset.range_do!(end_epoch_offset, |i| {
+        let used_capacity = self
+            .future_accounting
+            .ring_lookup_mut(i)
+            .increase_used_capacity(encoded_capacity_bytes);
+
+        if (i == 0) {
+            self.used_capacity_size = used_capacity;
+        };
+
+        assert!(used_capacity <= self.total_capacity_size, EStorageExceeded);
+    });
+}
+
 // === Testing ===
 
 #[test_only]
@@ -743,5 +1109,5 @@ public(package) fun future_accounting_mut(
 
 #[test_only]
 public(package) fun destroy_for_testing(s: SystemStateInnerV1) {
-    sui::test_utils::destroy(s)
+    std::unit_test::destroy(s)
 }

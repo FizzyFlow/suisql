@@ -58,14 +58,14 @@ public(package) fun transition(cmt: &Committee, mut new_assignments: VecMap<ID, 
     // Store the total number of shards in the new committee, before
     // new_assignments is modified.
     let mut new_num_of_shards = 0;
-    new_assignments.size().do!(|idx| {
+    new_assignments.length().do!(|idx| {
         let (_, shards) = new_assignments.get_entry_by_idx(idx);
         new_num_of_shards = new_num_of_shards + *shards;
     });
 
     let mut new_cmt = vec_map::empty();
     let mut to_move = vector[];
-    let size = cmt.0.size();
+    let size = cmt.0.length();
 
     let mut current_num_of_shards = 0;
     size.do!(|idx| {
@@ -132,22 +132,22 @@ public(package) fun transition(cmt: &Committee, mut new_assignments: VecMap<ID, 
 
 #[syntax(index)]
 /// Get the shards assigned to the given `node_id`.
-public(package) fun shards(cmt: &Committee, node_id: &ID): &vector<u16> {
+public fun shards(cmt: &Committee, node_id: &ID): &vector<u16> {
     cmt.0.get(node_id)
 }
 
 /// Get the number of nodes in the committee.
-public(package) fun size(cmt: &Committee): u64 {
-    cmt.0.size()
+public fun size(cmt: &Committee): u64 {
+    cmt.0.length()
 }
 
 /// Get the inner representation of the committee.
-public(package) fun inner(cmt: &Committee): &VecMap<ID, vector<u16>> {
+public fun inner(cmt: &Committee): &VecMap<ID, vector<u16>> {
     &cmt.0
 }
 
 /// Copy the inner representation of the committee.
-public(package) fun to_inner(cmt: &Committee): VecMap<ID, vector<u16>> {
+public fun to_inner(cmt: &Committee): VecMap<ID, vector<u16>> {
     cmt.0
 }
 

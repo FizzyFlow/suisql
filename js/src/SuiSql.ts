@@ -1,14 +1,11 @@
-// import initSqlJs from 'sql.js';
 import SuiSqlStatement from './SuiSqlStatement.js';
 import SuiSqlSync from './SuiSqlSync.js';
 
 import type { SuiSqlSyncToBlobckchainParams } from './SuiSqlSync.js';
 
-// import type { Database, BindParams } from "sql.js";
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiGrpcClient } from '@mysten/sui/grpc';
 import type { Signer } from '@mysten/sui/cryptography';
 
-// import { getFieldsFromCreateTableSql } from './SuiSqlUtils';
 import SuiSqlField from './SuiSqlField.js';
 import SuiSqlLibrarian from './SuiSqlLibrarian.js';
 
@@ -30,7 +27,7 @@ type SuiSqlParams = {
 
     network?: string, // 'testnet' | 'mainnet'
 
-    suiClient: SuiClient,                    // always needed, pass the one connected to needed network RPC
+    suiClient: SuiGrpcClient,                    // always needed, pass the one connected to needed network RPC
     signer?: Signer,                          // for write operations (both for sui and walrus)
     signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction, // for dApp, wrap wallet adapter signAndExecuteTransaction into this
     currentWalletAddress?: string,            // address of the connected wallet for write operations (both for sui and walrus)
@@ -52,7 +49,7 @@ export default class SuiSql {
     public _id?: string;
     public _name?: string;
 
-    private suiClient?: SuiClient;
+    private suiClient?: SuiGrpcClient;
 
     public suiSqlSync?: SuiSqlSync;
     public state: State = State.INITIALIZING;
@@ -114,7 +111,7 @@ export default class SuiSql {
                 });
             }
         } else {
-            throw new Error('SuiClient is required');
+            // throw new Error('SuiClient is required');
         }
     }
     

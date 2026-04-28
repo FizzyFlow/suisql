@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
 import type { Signer } from '@mysten/sui/cryptography';
 import { Transaction } from "@mysten/sui/transactions";
 /**
@@ -6,7 +6,7 @@ import { Transaction } from "@mysten/sui/transactions";
  */
 export type CustomSignAndExecuteTransactionFunction = (tx: Transaction) => Promise<string>;
 type SuiSqlBlockchainParams = {
-    suiClient: SuiClient;
+    suiClient: SuiGrpcClient;
     signer?: Signer;
     signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction;
     currentWalletAddress?: string;
@@ -27,11 +27,12 @@ export default class SuiSqlBlockchain {
     private forcedPackageId?;
     private bankId?;
     private __walCoinType?;
+    private getGraphQLClient;
     constructor(params: SuiSqlBlockchainParams);
     setPackageId(packageId: string): void;
     getPackageId(): string | null;
     getOriginalPackageId(): string | null;
-    getWriteCapId(dbId: string): Promise<string | null | undefined>;
+    getWriteCapId(dbId: string): Promise<string | null>;
     getBankId(): Promise<string | undefined>;
     getFields(dbId: string): Promise<{
         patches: any;
@@ -43,7 +44,7 @@ export default class SuiSqlBlockchain {
         name: any;
     }>;
     getWalCoinType(): Promise<string>;
-    getWalCoinForTx(tx: Transaction, amount: bigint): Promise<import("@mysten/sui/dist/cjs/transactions/Transaction.js").TransactionResult>;
+    getWalCoinForTx(tx: Transaction, amount: bigint): Promise<import("@mysten/sui/transactions").TransactionResult>;
     extendWalrus(dbId: string, walrusSystemAddress: string, extendedEpochs: number, totalPrice?: bigint): Promise<number | boolean>;
     clampWithWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string): Promise<boolean>;
     fillExpectedWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string): Promise<boolean>;
@@ -52,9 +53,12 @@ export default class SuiSqlBlockchain {
     makeDb(name: string): Promise<any>;
     listDatabases(callback?: Function): Promise<Array<string>>;
     getCurrentAddress(): string | null;
-    executeTx(tx: Transaction): Promise<import("@mysten/sui/dist/cjs/client/index.js").SuiTransactionBlockResponse | null>;
+    executeTx(tx: Transaction): Promise<import("@mysten/sui/client").SuiClientTypes.TransactionResult<{
+        effects: true;
+        events: true;
+    }> | null>;
     executeRegisterBlobTransaction(tx: Transaction): Promise<string | null>;
-    coinOfAmountToTxCoin(tx: Transaction, owner: string, coinType: string, amount: bigint, addEmptyCoins?: boolean): Promise<import("@mysten/sui/dist/cjs/transactions/Transaction.js").TransactionResult>;
+    coinOfAmountToTxCoin(tx: Transaction, owner: string, coinType: string, amount: bigint, addEmptyCoins?: boolean): Promise<import("@mysten/sui/transactions").TransactionResult>;
     coinObjectsEnoughForAmount(owner: string, coinType: string, expectedAmount: bigint, addEmptyCoins?: boolean): Promise<string[] | null>;
 }
 export {};

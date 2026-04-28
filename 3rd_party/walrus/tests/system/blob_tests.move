@@ -338,7 +338,7 @@ fun direct_extend_happy() {
 #[test]
 fun extend_blob_created_from_split_storage() {
     use walrus::epoch_parameters;
-    use sui::test_utils::destroy;
+    use std::unit_test::destroy;
 
     let ctx = &mut tx_context::dummy();
     let mut system = system::new_for_testing(ctx);
@@ -612,7 +612,7 @@ fun default_blob_id(): u256 {
     blob::derive_blob_id(ROOT_HASH, RS2, SIZE)
 }
 
-/// Utiliy macro that calls the given function on a new Blob.
+/// Utility macro that calls the given function on a new Blob.
 ///
 /// Creates the system, registers the default blob, and calls the given function with the blob.
 /// Finally, it destroys the blob and returns the system.
