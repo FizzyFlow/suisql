@@ -17,15 +17,16 @@ contexts:
     # module: site
     # portal: wal.app
     package: 0x26eb7ee8688da02c5f671679524e379f0b837a12f1d1d799f255b7eea260ad27
+    staking_object: 0x10b9d30c28448939ce6c4d6c6e0ffce4a7f8a4ada8248bdad09ef8b70e4a3904
     general:
-       wallet_env: mainnet
-       walrus_context: mainnet # Assumes a Walrus CLI setup with a multi-config containing the "mainnet" context.
-       walrus_package: 0xfdc88f7d7cf30afab2f82e8380d11ee8f70efb90e863d1de8616fae1bb09ea77
-       # wallet_address: 0x1234...
-       # rpc_url: https://fullnode.mainnet.sui.io:443
-       # wallet: /path/to/.sui/sui_config/client.yaml
-       # walrus_binary: /path/to/walrus
-       # walrus_config: /path/to/mainnet/client_config.yaml
-       # gas_budget: 500000000
+        wallet_env: mainnet
+        walrus_context: mainnet # Assumes a Walrus CLI setup with a multi-config containing the "mainnet" context.
+        walrus_package: 0xfdc88f7d7cf30afab2f82e8380d11ee8f70efb90e863d1de8616fae1bb09ea77
+        # wallet_address: 0x1234...
+        # rpc_url: https://fullnode.mainnet.sui.io:443
+        # wallet: /path/to/.sui/sui_config/client.yaml
+        # walrus_binary: /path/to/walrus
+        # walrus_config: /path/to/mainnet/client_config.yaml
+        # gas_budget: 500000000
 
 default_context: mainnet

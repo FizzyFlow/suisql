@@ -1,5 +1,5 @@
 import SuiSql from "./SuiSql.js";
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiGrpcClient } from '@mysten/sui/grpc';
 import type { Signer } from '@mysten/sui/cryptography';
 import type { SuiSqlOwnerType } from "./SuiSqlBlockchain.js";
 
@@ -25,7 +25,7 @@ type SuiSqlSyncParams = {
     suiSql: SuiSql,
     id?: string,
     name?: string,
-    suiClient: SuiClient,
+    suiClient: SuiGrpcClient,
     walrusClient?: SuiSqlWalrusWalrusClient,
     publisherUrl?: string,
     aggregatorUrl?: string,
@@ -54,7 +54,7 @@ export default class SuiSqlSync {
 
     private suiSql: SuiSql;
 
-    private suiClient: SuiClient;
+    private suiClient: SuiGrpcClient;
     
     private syncedAt: number | null = null;
 
@@ -220,8 +220,10 @@ export default class SuiSqlSync {
 
         this.patchesTotalSize = 0;
 
+        console.log('[syncFromBlockchain] id:', id, 'patches count:', fields?.patches?.length, 'walrusBlobId:', fields?.walrusBlobId);
         SuiSqlLog.log('need to apply patches', fields?.patches?.length);
         for (const patch of fields.patches) {
+            console.log('[syncFromBlockchain] applying patch, length:', patch.length, 'type byte:', patch[0]);
             this.patchesTotalSize = this.patchesTotalSize + patch.length;
             await this.applyPatch(patch);
         }

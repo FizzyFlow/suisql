@@ -66,11 +66,20 @@
         <span>Base Blob End Epoch</span>
 
         <template v-slot:action>
-            {{  walrusEndEpoch  }}&nbsp; <q-btn v-if="walrusEndEpoch" 
+            {{  walrusEndEpoch  }}&nbsp; <q-btn v-if="walrusEndEpoch"
             icon="add" size="sm" outline @click="extendEpoch" color="primary" />
         </template>
-        </q-banner>  
-    
+        </q-banner>
+
+        <q-banner inline-actions :dark="false"  style="background-color: transparent;" v-if="walrusBlobId">
+        <span>Current Walrus Epoch</span>
+
+        <template v-slot:action>
+            <span v-if="currentWalrusEpoch !== null">{{ currentWalrusEpoch }}</span>
+            <q-spinner v-else color="primary" size="1em" />
+        </template>
+        </q-banner>
+
     </div>
     
     </template>
@@ -101,6 +110,8 @@
 
                 hasWriteAccess: false,
                 hasWriteAccessLoading: true,
+
+                currentWalrusEpoch: null,
             }
         },
         computed: {
@@ -221,6 +232,16 @@
 
                 this.$forceUpdate();
             },
+            async loadCurrentWalrusEpoch() {
+                try {
+                    const epoch = await toRaw(this.db)?.suiSqlSync?.walrus?.getSystemCurrentEpoch();
+                    if (epoch != null) {
+                        this.currentWalrusEpoch = epoch;
+                    }
+                } catch(e) {
+                    console.error('loadCurrentWalrusEpoch', e);
+                }
+            },
             async loadRights() {
                 if (this.db) {
                     this.hasWriteAccess = await toRaw(this.db).hasWriteAccess();
@@ -233,6 +254,7 @@
         },
         mounted: function(){
             this.loadRights();
+            this.loadCurrentWalrusEpoch();
             this.__timeout = setInterval(() => {
                 this.unsavedChangesCount();
             }, 1000);

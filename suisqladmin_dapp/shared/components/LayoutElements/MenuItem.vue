@@ -4,7 +4,7 @@
 		:disable="item.disabled"
 		clickable
 		v-ripple
-		:to="(!item.subItems || !item.subItems.length) ? (item.name ? {name: item.name} : item.path) : null"
+		v-bind="(!item.subItems || !item.subItems.length) ? { to: item.name ? {name: item.name} : item.path } : {}"
 		class="row menuItem"
 		@click="onClick"
 		>

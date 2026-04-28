@@ -119,7 +119,7 @@ export default class SuiSqlWalrus {
         }
 
         const systemObject = await this.walrusClient.systemObject();
-        return systemObject.id.id;
+        return systemObject.id;
     }
 
     async getSystemCurrentEpoch(): Promise<number | null> {
@@ -128,7 +128,7 @@ export default class SuiSqlWalrus {
         }
 
         const systemState = await this.walrusClient?.systemState();
-        if (systemState && systemState.committee && systemState.committee.epoch) {
+        if (systemState && systemState.committee && systemState.committee.epoch != null) {
             return systemState.committee.epoch;
         }
 
@@ -217,7 +217,7 @@ export default class SuiSqlWalrus {
             attributes: undefined,
         });
 
-        const blobObjectId = blobObject.id.id;
+        const blobObjectId = blobObject.id;
         const blobIdAsInt = blobIdToInt(blobId);
 
         SuiSqlLog.log('walrus write success', blobIdAsInt, blobObjectId);
@@ -229,7 +229,6 @@ export default class SuiSqlWalrus {
         if (this.publisherUrl && this.currentWalletAddress) {
             return await this.writeToPublisher(data);
         }
-
         if (!this.walrusClient || !this.chain) {
             return null;
         }
@@ -238,8 +237,12 @@ export default class SuiSqlWalrus {
             throw new Error('No owner address available');
         }
 
+        SuiSqlLog.log('SuiSqlWalrus', 'writing to Walrus. Data length: ', data.length);
+
         const flow = this.walrusClient.writeBlobFlow({ blob: data });
         await flow.encode();
+
+        SuiSqlLog.log('SuiSqlWalrus', 'writing to Walrus. Blob Encoded.');
 
         // Step 2: Register the blob (triggered by user clicking a register button after the encode step)
         const handleRegister = async () => {
@@ -253,12 +256,13 @@ export default class SuiSqlWalrus {
             }
 
             const results = await this.chain.executeTx(registerTx);
-            if (!results || !results.digest) {
+            const digest = results?.Transaction?.digest ?? results?.FailedTransaction?.digest;
+            if (!results || !digest) {
                 throw new Error('Failed to execute register transaction');
             }
             // Step 3: Upload the data to storage nodes
             // This can be done immediately after the register step, or as a separate step the user initiates
-            await flow.upload({ digest: results.digest });
+            await flow.upload({ digest });
         }
 
         const handleCertify = async () => {
@@ -272,12 +276,16 @@ export default class SuiSqlWalrus {
 
             return {
                 blobId: blobIdToInt(blob.blobId),
-                blobObjectId: blob.blobObject.id.id,
+                blobObjectId: blob.blobObjectId,
             };
         }
 
         await handleRegister();
-        return await handleCertify();
+        SuiSqlLog.log('SuiSqlWalrus', 'writing to Walrus. Blob Registered.');
+        const certifyResults = await handleCertify();
+        SuiSqlLog.log('SuiSqlWalrus', 'writing to Walrus. Blob Certified.', certifyResults);
+
+        return certifyResults;
 
         // const deletable = true;
 

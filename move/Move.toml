@@ -2,8 +2,8 @@
 name = "suisql"
 version = "0.0.1"
 edition = "2024.beta"
-published-at = "0xf55b2f4fbac4bfa87cf9ceb8a333b14834bcc8299965640d77e63818fbca5428" #mainnet v2
-#published-at = "0x1d413bd519db4b3207c68766c33b362a384699cc7af34d97ad4dabdf223c223a" #testnet v2
+#published-at = "0xf55b2f4fbac4bfa87cf9ceb8a333b14834bcc8299965640d77e63818fbca5428" #mainnet v2
+published-at = "0x1d413bd519db4b3207c68766c33b362a384699cc7af34d97ad4dabdf223c223a" #testnet v2
 
 [dependencies]
 Walrus = { local = "../3rd_party/walrus" }

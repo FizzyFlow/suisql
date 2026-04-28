@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import SuiSql from "../src/SuiSql";
-import SuiSqliteBinaryParser from '../src/SuiSqliteBinaryParser';
 
 let db = null;
 
@@ -14,21 +13,22 @@ describe("test binary sqlite format", () => {
         await db.run('CREATE TABLE employees(id integer primary key,  name    text);'); 
 
         // now it has full structure:
-        const binary = db.binary;
+        const binary = db.getBinaryView();
+
         expect(binary.getSize() > 0).toBeTruthy();
         expect(binary.checkHeaderIsOk()).toBeTruthy();
         expect(binary.checkLooksValid()).toBeTruthy();
 
 
-        console.log(await db.binary.getPageSha256(0));
-        console.log(await db.binary.getPageSha256(1));
-        console.log(await db.binary.getPageSha256(2));
+        console.log(await binary.getPageSha256(0));
+        console.log(await binary.getPageSha256(1));
+        console.log(await binary.getPageSha256(2));
 
         await db.run('CREATE TABLE employees2 (id integer primary key,  name    text);'); 
 
-        console.log(await db.binary.getPageSha256(0));
-        console.log(await db.binary.getPageSha256(1));
-        console.log(await db.binary.getPageSha256(2));
+        console.log(await binary.getPageSha256(0));
+        console.log(await binary.getPageSha256(1));
+        console.log(await binary.getPageSha256(2));
 
 
         // const binary = db.export();

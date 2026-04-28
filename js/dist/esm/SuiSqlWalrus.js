@@ -77,14 +77,14 @@ class SuiSqlWalrus {
       return null;
     }
     const systemObject = await this.walrusClient.systemObject();
-    return systemObject.id.id;
+    return systemObject.id;
   }
   async getSystemCurrentEpoch() {
     if (!this.walrusClient) {
       return null;
     }
     const systemState = await this.walrusClient?.systemState();
-    if (systemState && systemState.committee && systemState.committee.epoch) {
+    if (systemState && systemState.committee && systemState.committee.epoch != null) {
       return systemState.committee.epoch;
     }
     return null;
@@ -153,7 +153,7 @@ class SuiSqlWalrus {
       owner: this.signer.toSuiAddress(),
       attributes: void 0
     });
-    const blobObjectId = blobObject.id.id;
+    const blobObjectId = blobObject.id;
     const blobIdAsInt = blobIdToInt(blobId);
     SuiSqlLog.log("walrus write success", blobIdAsInt, blobObjectId);
     return { blobId: blobIdAsInt, blobObjectId };
@@ -169,8 +169,10 @@ class SuiSqlWalrus {
     if (!owner) {
       throw new Error("No owner address available");
     }
+    SuiSqlLog.log("SuiSqlWalrus", "writing to Walrus. Data length: ", data.length);
     const flow = this.walrusClient.writeBlobFlow({ blob: data });
     await flow.encode();
+    SuiSqlLog.log("SuiSqlWalrus", "writing to Walrus. Blob Encoded.");
     const handleRegister = async () => {
       const registerTx = flow.register({
         epochs: 3,
@@ -181,10 +183,11 @@ class SuiSqlWalrus {
         throw new Error("No chain available for executing the register transaction");
       }
       const results = await this.chain.executeTx(registerTx);
-      if (!results || !results.digest) {
+      const digest = results?.Transaction?.digest ?? results?.FailedTransaction?.digest;
+      if (!results || !digest) {
         throw new Error("Failed to execute register transaction");
       }
-      await flow.upload({ digest: results.digest });
+      await flow.upload({ digest });
     };
     const handleCertify = async () => {
       const certifyTx = flow.certify();
@@ -195,11 +198,14 @@ class SuiSqlWalrus {
       const blob = await flow.getBlob();
       return {
         blobId: blobIdToInt(blob.blobId),
-        blobObjectId: blob.blobObject.id.id
+        blobObjectId: blob.blobObjectId
       };
     };
     await handleRegister();
-    return await handleCertify();
+    SuiSqlLog.log("SuiSqlWalrus", "writing to Walrus. Blob Registered.");
+    const certifyResults = await handleCertify();
+    SuiSqlLog.log("SuiSqlWalrus", "writing to Walrus. Blob Certified.", certifyResults);
+    return certifyResults;
     return null;
   }
   async readFromAggregator(blobId) {

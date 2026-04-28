@@ -23,11 +23,11 @@ const randomDbName = 'testdb_' + Math.random().toString(36).substring(2, 15);
 
 const sampleDbNames = {
     mainnet: 'testdb_wdsx7pwjl6c',
-    testnet: 'testdb_wdsx7pwjl6c',
+    testnet: 'random_database_name_fdr0njkmtm9_ve2klvp574',
 };
 const sampleDbIds = {
     mainnet: '0x17ca21f96da213031c1595ccd0108dc1fee50cead1a0b77ff14ac495b30db105',
-    testnet: '0x17ca21f96da213031c1595ccd0108dc1fee50cead1a0b77ff14ac495b30db105',
+    testnet: '0xec468f2e70669829b38f92c971f3d3b0a1f9f35a1d1264b98e67bfeadfbf4214',
 };
 const aggregators = {
     mainnet: 'https://aggregator.walrus-mainnet.walrus.space',
@@ -50,6 +50,8 @@ describe('initialize connection to blockchain', () => {
         expect(suiMaster.address).toBeTruthy();  
     });
 });
+
+
 
 const addCustomRowSyncAndCheckBack = async(db, params = {}) => {
     // 1 - check if there's employees table in the db.
@@ -151,6 +153,103 @@ describe('load existing db', () => {
 
 
 
+    it("lists databases and finds the sample db by name", {}, async () => {
+        const db = new SuiSql({
+                id: sampleDbIds[chain],
+                network: chain,
+                suiClient: suiMaster.client,
+                signer: suiMaster.signer,
+                debug: true
+            });
+
+        const names = await db.listDatabases();
+
+        expect(Array.isArray(names)).toBe(true);
+        expect(names.length).toBeGreaterThan(0);
+        expect(names).toContain(sampleDbNames[chain]);
+
+        // also verify the callback variant receives the same names
+        const callbackNames = [];
+        await db.listDatabases((batch) => { callbackNames.push(...batch); });
+        expect(callbackNames).toEqual(names);
+    });
+
+    it("loads sample db and verifies walrus blob (if present) is not expired", {}, async () => {
+        const db = new SuiSql({
+                id: sampleDbIds[chain],
+                network: chain,
+                aggregatorUrl: aggregators[chain],
+                walrusClient: walrusClientMock[`${chain}NoRelay`],
+                suiClient: suiMaster.client,
+                signer: suiMaster.signer,
+                debug: true
+            });
+
+        await db.initialize();
+
+        expect(db.state).toBe('OK');
+
+        if (db.walrusBlobId) {
+            expect(db.walrusEndEpoch).toBeTruthy();
+
+            const currentEpoch = await db.suiSqlSync.walrus.getSystemCurrentEpoch();
+            expect(currentEpoch).toBeGreaterThan(0);
+
+            expect(db.walrusEndEpoch).toBeGreaterThan(currentEpoch);
+        }
+    });
+
+    it("extends walrus blob by 30 epochs if expiry is within 10 epochs", {}, async () => {
+        const db = new SuiSql({
+                id: sampleDbIds[chain],
+                network: chain,
+                aggregatorUrl: aggregators[chain],
+                walrusClient: walrusClientMock[`${chain}NoRelay`],
+                suiClient: suiMaster.client,
+                signer: suiMaster.signer,
+                debug: true
+            });
+
+        await db.initialize();
+
+        expect(db.state).toBe('OK');
+
+        if (!db.walrusBlobId) {
+            return; // no blob to extend
+        }
+
+        const currentEpoch = await db.suiSqlSync.walrus.getSystemCurrentEpoch();
+        expect(currentEpoch).toBeGreaterThan(0);
+
+        const epochsLeft = db.walrusEndEpoch - currentEpoch;
+        if (epochsLeft >= 10) {
+            return; // no extension needed
+        }
+
+        const endEpochBefore = db.walrusEndEpoch;
+
+        await db.extendWalrus(30);
+
+        expect(db.walrusEndEpoch).toBeGreaterThan(endEpochBefore);
+
+        // re-initialize from blockchain and verify the extended epoch is persisted
+        const db2 = new SuiSql({
+                id: sampleDbIds[chain],
+                network: chain,
+                aggregatorUrl: aggregators[chain],
+                walrusClient: walrusClientMock[`${chain}NoRelay`],
+                suiClient: suiMaster.client,
+                signer: suiMaster.signer,
+                debug: true
+            });
+
+        await db2.initialize();
+
+        expect(db2.walrusEndEpoch).toBeGreaterThan(endEpochBefore);
+        expect(db2.walrusEndEpoch - currentEpoch).toBeGreaterThanOrEqual(30);
+    });
+
+
     let newDb = null;
     it("make new  database and save it on the blockchain", {}, async () => {
         const randomDbName = 'random_database_name_' + Math.random().toString(36).substring(2, 15) + '_' + Math.random().toString(36).substring(2, 15);
@@ -186,6 +285,7 @@ describe('load existing db', () => {
 
         await addCustomRowSyncAndCheckBack(newDb, { forceWalrus: false });
     });
+
 
     it("fill it with data until it overloads sui limits and goes to walrus automatically rebating sui storage", {}, async () => {
         const instance = await newDb.database(newDb.name);

@@ -49,12 +49,17 @@ public(package) fun create_storage(
     Storage { id: object::new(ctx), start_epoch, end_epoch, storage_size }
 }
 
-/// Extends the end epoch by `extendion_epochs` epochs.
+/// Extends the end epoch by `extension_epochs` epochs.
 public(package) fun extend_end_epoch(self: &mut Storage, extension_epochs: u32) {
     self.end_epoch = self.end_epoch + extension_epochs;
 }
 
-/// Split the storage object into two based on `split_epoch`
+/// Increases the storage size by `additional_size` bytes.
+public(package) fun increase_size(self: &mut Storage, additional_size: u64) {
+    self.storage_size = self.storage_size + additional_size;
+}
+
+/// Splits the storage object into two based on `split_epoch`.
 ///
 /// `storage` is modified to cover the period from `start_epoch` to `split_epoch`
 /// and a new storage object covering `split_epoch` to `end_epoch` is returned.
@@ -70,7 +75,7 @@ public fun split_by_epoch(storage: &mut Storage, split_epoch: u32, ctx: &mut TxC
     }
 }
 
-/// Split the storage object into two based on `split_size`
+/// Splits the storage object into two based on `split_size`.
 ///
 /// `storage` is modified to cover `split_size` and a new object covering
 /// `storage.storage_size - split_size` is created.
@@ -104,7 +109,7 @@ public fun fuse_periods(first: &mut Storage, second: Storage) {
     }
 }
 
-/// Fuse two storage objects that cover the same period
+/// Fuse two storage objects that cover the same period.
 public fun fuse_amount(first: &mut Storage, second: Storage) {
     let Storage {
         id,
@@ -133,7 +138,7 @@ public fun fuse(first: &mut Storage, second: Storage) {
 }
 
 #[test_only]
-/// Constructor for [Storage] objects for tests
+/// Constructor for [Storage] objects for tests.
 public fun create_for_test(
     start_epoch: u32,
     end_epoch: u32,
@@ -143,7 +148,7 @@ public fun create_for_test(
     Storage { id: object::new(ctx), start_epoch, end_epoch, storage_size }
 }
 
-/// Destructor for [Storage] objects
+/// Destructor for [Storage] objects.
 public fun destroy(storage: Storage) {
     let Storage { id, .. } = storage;
     id.delete();

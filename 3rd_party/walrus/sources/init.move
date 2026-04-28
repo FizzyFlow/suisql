@@ -13,6 +13,8 @@ use walrus::{display, events, staking::{Self, Staking}, system::{Self, System}, 
 const EInvalidMigration: u64 = 0;
 /// The provided upgrade cap does not belong to this package.
 const EInvalidUpgradeCap: u64 = 1;
+/// The function is deprecated and should not be used.
+const EDeprecatedFunction: u64 = 2;
 
 /// The OTW to create `Publisher` and `Display` objects.
 public struct INIT has drop {}
@@ -23,7 +25,8 @@ public struct InitCap has key, store {
     publisher: Publisher,
 }
 
-/// Init function, creates an init cap and transfers it to the sender.
+/// Initializes the system by creating an init cap and transferring it to the sender.
+///
 /// This allows the sender to call the function to actually initialize the system
 /// with the corresponding parameters. Once that function is called, the cap is destroyed.
 fun init(otw: INIT, ctx: &mut TxContext) {
@@ -33,7 +36,8 @@ fun init(otw: INIT, ctx: &mut TxContext) {
     transfer::transfer(init_cap, ctx.sender());
 }
 
-/// Function to initialize walrus and share the system and staking objects.
+/// Initializes Walrus and shares the system and staking objects.
+///
 /// This can only be called once, after which the `InitCap` is destroyed.
 public fun initialize_walrus(
     init_cap: InitCap,
@@ -49,7 +53,8 @@ public fun initialize_walrus(
     id.delete();
     let package_id = upgrade_cap.package();
     assert!(
-        type_name::get<InitCap>().get_address() == package_id.to_address().to_ascii_string(),
+        type_name::with_defining_ids<InitCap>().address_string()
+            == package_id.to_address().to_ascii_string(),
         EInvalidUpgradeCap,
     );
     system::create_empty(max_epochs_ahead, package_id, ctx);
@@ -59,17 +64,32 @@ public fun initialize_walrus(
     emergency_upgrade_cap
 }
 
-/// Migrate the staking and system objects to the new package id.
+/// Deprecated old migration function.
+public fun migrate(_staking: &mut Staking, _system: &mut System) {
+    abort EDeprecatedFunction
+}
+
+/// Migrates the staking and system objects to the new package ID.
 ///
 /// This must be called in the new package after an upgrade is committed
 /// to emit an event that informs all storage nodes and prevent previous package
 /// versions from being used.
-public fun migrate(staking: &mut Staking, system: &mut System) {
+///
+/// Migrate to version 2:
+///   Requires the migration epoch to be set first on the staking object, which then
+///   enables the migration at the start of the next epoch.
+/// Migrate to version 3:
+///   - Create the slashing manager shared object.
+///   - Do not use migration epoch.
+/// Migrate to version 4:
+///   - No additional steps beyond version bump.
+entry fun migrate_v2(staking: &mut Staking, system: &mut System, _ctx: &mut TxContext) {
     staking.migrate();
     system.migrate();
     // Check that the package id and version are the same.
     assert!(staking.package_id() == system.package_id(), EInvalidMigration);
     assert!(staking.version() == system.version(), EInvalidMigration);
+
     // Emit an event to inform storage nodes of the upgrade.
     events::emit_contract_upgraded(
         staking.epoch(),
@@ -105,6 +125,7 @@ public fun initialize_for_testing(
     let package_id = upgrade_cap.package();
     system::create_empty(max_epochs_ahead, package_id, ctx);
     staking::create(epoch_zero_duration, epoch_duration, n_shards, package_id, clock, ctx);
+    wal::wal::init_for_testing(ctx);
     display::create(publisher, ctx);
     let emergency_upgrade_cap = upgrade::new(upgrade_cap, ctx);
     emergency_upgrade_cap

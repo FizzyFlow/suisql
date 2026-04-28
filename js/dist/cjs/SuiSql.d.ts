@@ -1,7 +1,7 @@
 import SuiSqlStatement from './SuiSqlStatement.js';
 import SuiSqlSync from './SuiSqlSync.js';
 import type { SuiSqlSyncToBlobckchainParams } from './SuiSqlSync.js';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiGrpcClient } from '@mysten/sui/grpc';
 import type { Signer } from '@mysten/sui/cryptography';
 import SuiSqlField from './SuiSqlField.js';
 import type { BindParams } from './SuiSqlLibrarian.js';
@@ -13,7 +13,7 @@ type SuiSqlParams = {
     id?: string;
     name?: string;
     network?: string;
-    suiClient: SuiClient;
+    suiClient: SuiGrpcClient;
     signer?: Signer;
     signAndExecuteTransaction?: CustomSignAndExecuteTransactionFunction;
     currentWalletAddress?: string;
@@ -105,6 +105,7 @@ export default class SuiSql {
             step(): boolean;
         };
         run(sql: string, params?: BindParams): /*elided*/ any;
+        updateHook(callback: import("sql.js").UpdateHookCallback | null): /*elided*/ any;
     } | null;
     get writeExecutions(): {
         at: number;

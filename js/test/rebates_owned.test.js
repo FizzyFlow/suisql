@@ -96,6 +96,7 @@ describe('find all databases unittest owns', () => {
                     suiClient: suiMaster.client,
                     walrusClient: walrusClientMock[`${chain}`],
                     signer: suiMaster.signer,
+                    debug: true,
                 });
                 await suiSqlDb.initialize();
                 await suiSqlDb.sync({ forceWalrus: true });

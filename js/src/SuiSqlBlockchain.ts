@@ -1,9 +1,13 @@
-import type { SuiClient } from '@mysten/sui/client';
+// import type { SuiClient } from '@mysten/sui/client';
+
+import { SuiGrpcClient, GrpcWebFetchTransport } from '@mysten/sui/grpc';
+import { SuiGraphQLClient } from '@mysten/sui/graphql';
 import type { Signer } from '@mysten/sui/cryptography';
 import { packages, originalPackages, bankIds } from "./SuiSqlConsts.js";
 
-import { Transaction, Commands } from "@mysten/sui/transactions";
+import { Transaction, TransactionCommands as Commands } from "@mysten/sui/transactions";
 import { bcs } from '@mysten/sui/bcs';
+import { fromBase64 } from '@mysten/sui/utils';
 
 import SuiSqlLog from './SuiSqlLog.js';
 
@@ -14,7 +18,7 @@ export type CustomSignAndExecuteTransactionFunction =
   (tx: Transaction) => Promise<string>;
 
 type SuiSqlBlockchainParams = {
-    suiClient: SuiClient,
+    suiClient: SuiGrpcClient,
 
     signer?: Signer,
 
@@ -32,7 +36,7 @@ export type SuiSqlOwnerType = {
 };
 
 export default class SuiSqlBlockchain {
-    private suiClient?: SuiClient;
+    private suiClient?: SuiGrpcClient;
     
     private signer?: Signer;
 
@@ -44,6 +48,16 @@ export default class SuiSqlBlockchain {
     private bankId?: string;
 
     private __walCoinType?: string;
+
+    private getGraphQLClient(): SuiGraphQLClient {
+        const urls: Record<string, string> = {
+            mainnet: 'https://sui-mainnet.mystenlabs.com/graphql',
+            testnet: 'https://sui-testnet.mystenlabs.com/graphql',
+            devnet:  'https://sui-devnet.mystenlabs.com/graphql',
+        };
+        const url = urls[this.network] ?? 'http://127.0.0.1:9125';
+        return new SuiGraphQLClient({ url, network: this.network as any });
+    }
 
     constructor(params: SuiSqlBlockchainParams) {
         this.suiClient = params.suiClient;
@@ -101,22 +115,30 @@ export default class SuiSqlBlockchain {
             return null;
         }
 
-        const result = await this.suiClient.getOwnedObjects({
-            owner: currentAddress,
-            filter: {
-                StructType: (originalPackageId + '::suisql::WriteCap'),
-            },
-            options: {
-                showContent: true,
-            },
-        });
-
-        // @todo: handle pagination
+        const client = this.suiClient;
         let writeCapId = null;
-        for (const obj of result.data) {
-            const fields = (obj?.data?.content as any).fields;
-            if (fields?.sui_sql_db_id == dbId) {
-                writeCapId = obj?.data?.objectId;
+        let cursor: string | null | undefined = undefined;
+        while (true) {
+            const result: Awaited<ReturnType<typeof client.listOwnedObjects>> = await client.listOwnedObjects({
+                owner: currentAddress,
+                type: (originalPackageId + '::suisql::WriteCap'),
+                include: {
+                    json: true,
+                },
+                cursor,
+            });
+
+            for (const obj of result.objects) {
+                if ((obj?.json as any)?.sui_sql_db_id == dbId) {
+                    writeCapId = obj?.objectId;
+                    break;
+                }
+            }
+
+            cursor = result.cursor;
+
+            if (writeCapId || !result.hasNextPage || !cursor) {
+                break;
             }
         }
 
@@ -144,12 +166,18 @@ export default class SuiSqlBlockchain {
 
         let bankId = null;
         // find bankId from the event
-        const resp = await this.suiClient.queryEvents({
-                query: {"MoveEventType": ""+packageId+"::suisql_events::NewBankEvent"},
-            });
+        const resp = await this.getGraphQLClient().query({
+            query: `{
+                events(filter: { eventType: "${packageId}::suisql_events::NewBankEvent" }) {
+                    nodes { contents { json } }
+                }
+            }`,
+            variables: {},
+        });
 
-        if (resp && resp.data && resp.data[0] && resp.data[0].parsedJson) {
-            bankId = (resp.data[0].parsedJson as any).id;
+        const firstEvent = (resp.data as any)?.events?.nodes?.[0];
+        if (firstEvent) {
+            bankId = firstEvent?.contents?.json?.id ?? null;
         }
 
         this.bankId = bankId;
@@ -158,18 +186,13 @@ export default class SuiSqlBlockchain {
 
     async getFields(dbId: string) {
         // const packageId = await this.getPackageId();
+        if (!this.suiClient) {
+            throw new Error('suiClient required');
+        }
 
-        const result = await (this.suiClient as SuiClient).getObject({
-            id: dbId, // normalized id
-            options: {
-                "showType": true,
-                "showOwner": true,
-                "showPreviousTransaction": true,
-                "showDisplay": false,
-                "showContent": true,
-                "showBcs": false,
-                "showStorageRebate": true
-            },
+        const result = await this.suiClient.getObject({
+            objectId: dbId,
+            include: { json: true },
         });
 
         let patches = [];
@@ -180,29 +203,32 @@ export default class SuiSqlBlockchain {
         let owner = null;
         let name = null;
 
-        if (result?.data?.content) {
-            const fields = (result.data.content as any).fields;
-            if (fields && fields.id && fields.id.id) {
-                patches = fields.patches;
+        console.log('[getFields] raw result.object:', JSON.stringify(result?.object, null, 2));
+
+        if (result?.object?.json) {
+            const fields = (result.object.json as any);
+            console.log('[getFields] fields.patches raw:', JSON.stringify(fields.patches));
+            console.log('[getFields] fields.id:', JSON.stringify(fields.id));
+            if (fields.id) {
+                patches = (fields.patches ?? []).map((p: string) => fromBase64(p));
             }
-            if (fields && fields.walrus_blob_id) {
+            console.log('[getFields] decoded patches count:', patches.length, 'sizes:', patches.map((p: Uint8Array) => p.length));
+            if (fields.walrus_blob_id) {
                 walrusBlobId = fields.walrus_blob_id;
             }
-            if (fields && fields.expected_walrus_blob_id) {
+            if (fields.expected_walrus_blob_id) {
                 expectedWalrusBlobId = fields.expected_walrus_blob_id;
             }
-            if (fields && fields.walrus_blob && fields.walrus_blob.fields && fields.walrus_blob.fields.storage) {
-                walrusEndEpoch = parseInt(''+fields.walrus_blob.fields.storage.fields.end_epoch);
+            if (fields.walrus_blob?.storage) {
+                walrusEndEpoch = parseInt(''+fields.walrus_blob.storage.end_epoch);
+                walrusStorageSize = parseInt(''+fields.walrus_blob.storage.storage_size);
             }
-            if (fields && fields.walrus_blob && fields.walrus_blob.fields && fields.walrus_blob.fields.storage) {
-                walrusStorageSize = parseInt(''+fields.walrus_blob.fields.storage.fields.storage_size);
-            }
-            if (fields && fields.name) {
+            if (fields.name) {
                 name = fields.name;
             }
 
-            if (result.data.owner) {
-                owner = (result.data.owner as SuiSqlOwnerType);
+            if (result.object.owner) {
+                owner = (result.object.owner as SuiSqlOwnerType);
             }
         }
 
@@ -286,16 +312,19 @@ export default class SuiSqlBlockchain {
             throw new Error('no packageId or no signer');
         }
         // get wal coin type from the method signature
-        const normalized = await this.suiClient.getNormalizedMoveFunction({
-            package: packageId,
-            module: 'suisql',
-            function: 'extend_walrus',
+        const { function: normalized } = await this.suiClient.getMoveFunction({
+            packageId,
+            moduleName: 'suisql',
+            name: 'extend_walrus',
         });
 
         let walCoinType = null;
         if (normalized && normalized.parameters && normalized.parameters.length > 3) {
-            const walPackage = (normalized.parameters[3] as any)?.MutableReference?.Struct?.typeArguments[0]?.Struct?.address;
-            walCoinType = ''+walPackage+'::wal::WAL';
+            const param = normalized.parameters[3];
+            const typeArg = param.body.$kind === 'datatype' ? param.body.datatype.typeParameters[0] : undefined;
+            if (typeArg && typeArg.$kind === 'datatype') {
+                walCoinType = typeArg.datatype.typeName;
+            }
         }
         
         if (!walCoinType) {
@@ -339,18 +368,7 @@ export default class SuiSqlBlockchain {
         const tx = new Transaction();
         const target = ''+packageId+'::suisql::extend_walrus';
 
-        // get wal coin type from the method signature
-        const normalized = await this.suiClient.getNormalizedMoveFunction({
-            package: packageId,
-            module: 'suisql',
-            function: 'extend_walrus',
-        });
-
-        let walCoinType = null;
-        if (normalized && normalized.parameters && normalized.parameters.length > 3) {
-            const walPackage = (normalized.parameters[3] as any)?.MutableReference?.Struct?.typeArguments[0]?.Struct?.address;
-            walCoinType = ''+walPackage+'::wal::WAL';
-        }
+        const walCoinType = await this.getWalCoinType();
 
         if (!walCoinType) {
             throw new Error('can not get walCoinType from extend_walrus method signature');
@@ -375,10 +393,11 @@ export default class SuiSqlBlockchain {
         try {
             const txResults = await this.executeTx(tx);
 
-            if (txResults && txResults.events && txResults.events.length) {
-                for (const event of txResults.events) {
-                    if (event && event.type && event.type.indexOf('BlobCertified') !== -1) {
-                        const updatedEndEpoch = (event.parsedJson as any).end_epoch;
+            const txEvents = txResults?.Transaction?.events ?? txResults?.FailedTransaction?.events;
+            if (txEvents && txEvents.length) {
+                for (const event of txEvents) {
+                    if (event && event.eventType && event.eventType.indexOf('BlobCertified') !== -1) {
+                        const updatedEndEpoch = (event.json as any).end_epoch;
                         if (updatedEndEpoch) {
                             return parseInt(''+updatedEndEpoch);
                         }
@@ -396,6 +415,8 @@ export default class SuiSqlBlockchain {
     }
 
     async clampWithWalrus(dbId: string, blobAddress: string, walrusSystemAddress: string) {
+        SuiSqlLog.log('Clamping DB with Walrus blob', dbId, blobAddress);
+
         const packageId = await this.getPackageId();
 
         if (!packageId || !this.suiClient) {
@@ -496,10 +517,7 @@ export default class SuiSqlBlockchain {
                 arguments: args, 
                 typeArguments: [], 
             });
-
-        // tx.setSenderIfNotSet(this.signer.toSuiAddress());
-        // const transactionBytes = await tx.build({ client: this.suiClient });
-
+            
         try {
             const txResults = await this.executeTx(tx);
             return true;
@@ -534,19 +552,20 @@ export default class SuiSqlBlockchain {
 
         const sender = '0x0000000000000000000000000000000000000000000000000000000000000000';
         tx.setSenderIfNotSet( sender);
-        const sims = await this.suiClient.devInspectTransactionBlock({
-                transactionBlock: tx,
-                sender,
+        const sims = await this.suiClient.simulateTransaction({
+                transaction: tx,
+                include: { events: true },
+                checksEnabled: false,
             });
 
         let foundDbId = null;
-        if (sims && sims.events && sims.events.length) {
-            for (const event of sims.events) {
-                if (event && event.type && event.type.indexOf('RemindDBEvent') !== -1) {
-                    foundDbId = (event.parsedJson as any).id;
+        const events = sims.Transaction?.events ?? sims.FailedTransaction?.events;
+        if (events && events.length) {
+            for (const event of events) {
+                if (event && event.eventType && event.eventType.indexOf('RemindDBEvent') !== -1) {
+                    foundDbId = (event.json as any).id;
                 }
             }
-            
         }
 
         return foundDbId;
@@ -579,10 +598,11 @@ export default class SuiSqlBlockchain {
 
         const txResults = await this.executeTx(tx);
 
-        if (txResults && txResults.events && txResults.events.length) {
-            for (const event of txResults.events) {
-                if (event && event.type && event.type.indexOf('NewDBEvent') !== -1) {
-                    createdDbId = (event.parsedJson as any).id;
+        const txEvents = txResults?.Transaction?.events ?? txResults?.FailedTransaction?.events;
+        if (txEvents && txEvents.length) {
+            for (const event of txEvents) {
+                if (event && event.eventType && event.eventType.indexOf('NewDBEvent') !== -1) {
+                    createdDbId = (event.json as any).id;
                 }
             }
         }
@@ -600,45 +620,45 @@ export default class SuiSqlBlockchain {
         const packageId = await this.getPackageId();
         const bankId = await this.getBankId();
 
+        console.log(bankId);
+
         if (!packageId || !bankId || !this.suiClient) {
             throw new Error('no bankId or packageId or no suiClient');
         }
 
         //1st, get bank object
-        const resp = await this.suiClient.getObject({
-            id: bankId,
-            options: {
-                showContent: true,
-            }
+        const bankObj = await this.suiClient.getObject({
+            objectId: bankId,
+            include: { json: true },
         });
-        const mapId = (resp.data?.content as any)?.fields?.map?.fields?.id?.id;
+        const rawMap = (bankObj.object?.json as any)?.map;
+        const mapId = typeof rawMap?.id === 'string' ? rawMap.id : rawMap?.id?.id;
 
-        let cursor = null;
+        console.log(mapId);
+
+        let cursor: string | null = null;
         let hasNextPage = false;
         const ret = [];
         do {
-            const resp = await this.suiClient.getDynamicFields({
+            const page: Awaited<ReturnType<typeof this.suiClient.listDynamicFields>> = await this.suiClient.listDynamicFields({
                 parentId: mapId,
+                cursor,
             });
             const thisRunRet = [];
-            for (const obj of resp.data) {
-                let name = obj.name.value;
-                // to get db object id we need to query dynamic field object content (obj.objectId)
+            for (const obj of page.dynamicFields) {
+                const name = bcs.string().parse(obj.name.bcs);
+                // to get db object id we need to query dynamic field object content (obj.fieldId)
                 // so we save some time, returning only names, which is enough for for SuiSql DB iniaitliazation
-                ret.push(''+name);
-                thisRunRet.push(''+name);
+                ret.push(name);
+                thisRunRet.push(name);
             }
 
             if (callback) {
                 await callback(thisRunRet);
             }
 
-            if (resp && resp.hasNextPage) {
-                hasNextPage = true;
-                cursor = resp.nextCursor;
-            } else {
-                hasNextPage = false;
-            }
+            hasNextPage = page.hasNextPage;
+            cursor = page.cursor;
         } while (hasNextPage);
 
         return ret;
@@ -662,35 +682,34 @@ export default class SuiSqlBlockchain {
             throw new Error('no suiClient');
         }
 
+        SuiSqlLog.log('Executing tx on sui', tx);
+
         let digest = null;
         if (this.signAndExecuteTransaction) {
             digest = await this.signAndExecuteTransaction(tx);
         } else if (this.signer) {
             tx.setSenderIfNotSet(this.signer.toSuiAddress());
             const transactionBytes = await tx.build({ client: this.suiClient });
+            const { signature } = await this.signer.signTransaction(transactionBytes);
 
-            const result = await this.suiClient.signAndExecuteTransaction({ 
-                signer: this.signer, 
+            const result = await this.suiClient.executeTransaction({
                 transaction: transactionBytes,
-                requestType: 'WaitForLocalExecution',
+                signatures: [signature],
             });
 
-            if (result && result.digest) {
-                digest = result.digest;
-            }
+            digest = result.Transaction?.digest ?? result.FailedTransaction?.digest ?? null;
         } else {
             throw new Error('either signer or signAndExecuteTransaction function required');
         }
 
+        SuiSqlLog.log('Executing tx on sui. Digest: ', digest);
 
         if (digest) {
-            const finalResults = await this.suiClient.getTransactionBlock({
-                digest: digest,
-                options: {
-                    showEffects: true,
-                    showEvents: true,
-                },
+            const finalResults = await this.suiClient.waitForTransaction({
+                digest,
+                include: { effects: true, events: true },
             });
+            SuiSqlLog.log('Executing tx on sui. Results: ', finalResults);
 
             return finalResults;
         }
@@ -704,20 +723,19 @@ export default class SuiSqlBlockchain {
         }
 
         const results = await this.executeTx(tx);
-        if (results && results.effects && results.effects) {
-            const effects = (results.effects as any);
+        const txEffects = results?.Transaction?.effects ?? results?.FailedTransaction?.effects;
+        if (txEffects) {
+            const effects = (txEffects as any);
             const createdObjectIds = [];
             for (const rec of effects.created) {
                 if (rec?.reference?.objectId) {
                     createdObjectIds.push(rec.reference.objectId);
                 }
             }
-            const allObjects = await this.suiClient.multiGetObjects({ ids: createdObjectIds, options: { showType: true }, });
-            if (allObjects && allObjects.length) {
-                for (const object of allObjects) {
-                    if (object && object.data && object.data.type && object.data.type.indexOf('::blob::Blob') !== -1) {
-                        return object.data.objectId;
-                    }
+            const { objects: allObjects } = await this.suiClient.getObjects({ objectIds: createdObjectIds });
+            for (const object of allObjects) {
+                if (!(object instanceof Error) && object.type.indexOf('::blob::Blob') !== -1) {
+                    return object.objectId;
                 }
             }
         }
@@ -774,15 +792,15 @@ export default class SuiSqlBlockchain {
         let result = null;
         let cursor = null;
         do {
-            result = await this.suiClient.getCoins({
-                owner: owner,
-                coinType: coinType,
+            result = await this.suiClient.listCoins({
+                owner,
+                coinType,
                 limit: 50,
-                cursor: cursor,
+                cursor,
             });
-            coins.push(...result.data);
+            coins.push(...result.objects);
 
-            cursor = result.nextCursor;
+            cursor = result.cursor;
         } while (result.hasNextPage);
 
         coins.sort((a, b) => {
@@ -793,11 +811,11 @@ export default class SuiSqlBlockchain {
         let totalAmount = BigInt(0);
         for (const coin of coins) {
             if (totalAmount <= expectedAmountAsBigInt) {
-                coinIds.push(coin.coinObjectId);
+                coinIds.push(coin.objectId);
                 totalAmount = totalAmount + BigInt(coin.balance);
             } else {
                 if (addEmptyCoins && BigInt(coin.balance) == 0n) {
-                    coinIds.push(coin.coinObjectId);
+                    coinIds.push(coin.objectId);
                 }
             }
         }

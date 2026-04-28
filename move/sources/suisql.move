@@ -1,5 +1,5 @@
 module suisql::suisql {
-    const VERSION: u64 = 5;
+    const VERSION: u64 = 6;
 
     use suisql::suisql_events;
     use walrus::system;
