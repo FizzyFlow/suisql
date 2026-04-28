@@ -4,7 +4,7 @@ const maxMoveObjectSize = 150 * 1024; // keep it safer than Sui limit,
 
 const packages:Object = {
         local: '0x9010c9927792bca9df88323ea0fce0605d141a6d4d95e8e82697f0a810196144',
-        testnet: '0xc8cf7140ec79c4a1d2062dd031cb81ae950366aa187cf45637debfde16f69682', // testnet v2
+        testnet: '0xc8cf7140ec79c4a1d2062dd031cb81ae950366aa187cf45637debfde16f69682', // testnet v3
         mainnet: '0xf55b2f4fbac4bfa87cf9ceb8a333b14834bcc8299965640d77e63818fbca5428', // mainnet v2
     };
 
